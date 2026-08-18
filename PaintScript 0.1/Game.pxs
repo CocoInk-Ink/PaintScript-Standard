@@ -1,0 +1,73 @@
+#Sprite Sprite_1
+
+var Exit:String = empty;
+
+var jumpKey = 0;
+
+var gravity = 0;
+
+var keys = {};
+
+@Start {
+	forever {
+		Reset();
+		GameLoop();
+	}
+}
+
+@Keydown(key:KeyboardKey) {
+	keys[key.name] = key;
+}
+
+@Keyup(key:KeyboardKey) {
+	keys[key.name] = empty;
+}
+
+function isKeyPressed(key:*):Boolean {
+	var answer:String = empty;
+
+	if (key is KeyboardKey kk) {
+		if (keys[kk.name] != empty) answer = true;
+		else answer = false;
+	} else if (key is String ks) {
+		if (keys[ks] != empty) answer = true;
+		else answer = false;
+	} else answer = false;
+
+	return answer;
+}
+
+function GameLoop() {
+	repeat until(Exit != empty) {
+		SwitchSkin("Hitbox");
+
+		BroadcastAndWait Tick;
+		Tick();
+
+		SetSpriteSkin();
+	}
+}
+
+function Reset() {
+	x = 0;
+	y = 0;
+}
+
+function SetSpriteSkin() {
+	if (gravity > 0 || jumpKey > 0) {}
+}
+
+function HandleKeys() {
+	const jumpKeyPressed:Boolean = isKeyPressed("Space") || isKeyPressed("W"), isKeyPressed("Up Arrow");
+
+	if (jumpKeyPressed && jumpKey < 2) {
+		gravity = 20;
+		jumpKey++;
+	}
+}
+
+@receive Tick { }
+
+function Tick() {
+	HandleKeys();
+}

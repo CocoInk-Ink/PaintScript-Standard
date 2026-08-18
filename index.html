@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Markdown Viewer</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      display: flex;
+      gap: 20px;
+      padding: 20px;
+      background-color: #f4f4f4;
+    }
+
+    textarea {
+      width: 45%;
+      height: 90vh;
+      padding: 10px;
+      font-size: 16px;
+      border: 1px solid #ccc;
+      resize: none;
+    }
+
+    .preview {
+      width: 45%;
+      height: 90vh;
+      overflow-y: auto;
+      padding: 10px;
+      background: white;
+      border: 1px solid #ccc;
+    }
+
+    pre {
+      background: #eee;
+      padding: 10px;
+      overflow-x: auto;
+    }
+
+    code {
+      background: #eee;
+      padding: 2px 4px;
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- Markdown Input -->
+  <textarea style="display: none;" id="markdown-input" placeholder="Type your Markdown here..."># Welcome
+	Choose a version of PaintScript to continue...
+</textarea>
+
+  <textarea style="display: none;" id="markdown-input2" placeholder="Type your Markdown here..."># Welcome
+	Choose a version of PaintScript to continue...
+</textarea>
+
+  <!-- HTML Preview -->
+  <div id="preview" class="preview"></div>
+  <div id="preview2" class="preview"></div>
+
+  <!-- Marked.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script>
+    const input = document.getElementById('markdown-input');
+	const input2 = document.getElementById('markdown-input2');
+
+    const preview = document.getElementById('preview');
+	const preview2 = document.getElementById('preview2');
+
+    // Configure marked.js for safe rendering
+    marked.setOptions({
+      breaks: true,
+      gfm: true
+    });
+
+    // Function to update preview
+    function updatePreview() {
+      try {
+        const markdownTextEasy = input.value;
+		const markdownTextPro = input2.value;
+        preview.innerHTML = marked.parse(markdownTextEasy);
+		preview2.innerHTML = marked.parse(markdownTextPro);
+      } catch (error) {
+        preview.innerHTML = `<p style="color:red;">Error rendering Markdown</p>`;
+        console.error(error);
+      }
+    }
+
+    // Initial render
+    updatePreview();
+
+    // Update preview on input
+    input.addEventListener('input', updatePreview);
+	
+	function setText(text, text2) {
+		input.innerHTML = text;
+		input2.innerHTML = text2;
+		updatePreview();
+	}
+
+	async function get(url) {
+		const res = await fetch(url, { method: "GET" });
+		const text = await res.text();
+		return text;
+	}
+
+	async function getVersion(version) {
+		const easy = await get(`/PaintScript ${version}/${version} def.md`);
+		const pro = await get(`/PaintScript ${version}/${version} pro def.md`);
+
+		setText(easy, pro);
+	}
+
+	getVersion("0.1");
+  </script>
+</body>
+
+</html>
