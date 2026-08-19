@@ -39,22 +39,31 @@ function isKeyPressed(key:*):Boolean {
 
 function GameLoop() {
 	repeat until(Exit != empty) {
+
+		// Switch to hitbox
 		SwitchSkin("Hitbox");
 
+		// Process logic
 		BroadcastAndWait Tick;
 		Tick();
 
+		// Set skin
 		SetSpriteSkin();
+
+		// Refresh Screen
+		call @Refresh;
 	}
 }
 
 function Reset() {
 	x = 0;
 	y = 0;
+	gravity = 0;
+	Exit = empty;
 }
 
 function SetSpriteSkin() {
-	if (gravity > 0 || jumpKey > 0) {}
+	if (gravity > 0 && jumpKey > 0) {}
 }
 
 function HandleKeys() {
@@ -64,10 +73,22 @@ function HandleKeys() {
 		gravity = 20;
 		jumpKey++;
 	}
+
+	if (isKeyPressed("Left Arrow") || isKeyPressed("A")) {
+		changeVar(x, -3)
+	}
+	if (isKeyPressed("Right Arrow") || isKeyPressed("D")) {
+		changeVar(x, 3);
+	}
 }
 
 @receive Tick { }
 
 function Tick() {
 	HandleKeys();
+
+	changeVar(this.y, gravity);
+	gravity--;
+
+	while (isTouching(get)) {}
 }
