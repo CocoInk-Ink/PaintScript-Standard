@@ -1,0 +1,11 @@
+PaintScript is a "compiled" programming language.
+What does that mean?
+
+Basically, PaintScript code is just text. That's what programming is, writing human readable code.
+"compilation" is the process of turning this text into code that your computer understands.
+
+A "compiler" reads text line by line, character by character, and turns it into
+a program.
+
+An "interpreter" reads text line by line, character by character, just like a compiler,
+but then runs the code as it's being read.

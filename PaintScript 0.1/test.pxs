@@ -1,0 +1,29 @@
+#PaintScript 0.1
+#Sprite
+
+repeat until (Exit != empty) {}
+
+repeat    until(condition) {}
+
+if not (gravity > 0) {}
+
+if     not (gravity > 0) {}
+
+else if not (isKeyPressed("Space")) {}
+
+else not {}
+
+else   if   not (condition) {}
+
+Broadcast Tick;
+BroadcastAndWait Tick;
+
+BroadcastAndWait LevelUp;
+Broadcast GameOver;
+
+public var var1 = empty;
+public function function1() {}
+global var var2:Boolean = 3;
+private function function2(param) {
+	
+}
