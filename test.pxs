@@ -1,0 +1,29 @@
+#PaintScript 0.1
+#Sprite Sprite_1
+
+@Start {
+	goToPosition(0, 0);
+
+	Broadcast Message1;
+
+	repeat(10) {
+		changeXBy(10);
+		call @refresh;
+	}
+
+	repeat(10) {
+		changeXBy(-10);
+		call @refresh;
+	}
+}
+
+@receive Message1 {
+	repeat(360) {
+		turnCW(1);
+		call @refresh;
+	}
+}
+
+@receive Message1 {
+	say("Hello!", 2, @refresh);
+}
