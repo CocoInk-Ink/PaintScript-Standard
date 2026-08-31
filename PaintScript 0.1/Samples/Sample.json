@@ -1,0 +1,15 @@
+{
+	"PaintScript-Version": "0.1",
+	"Target": "Sprite_1",
+
+	"imports": [
+		{"import": "standard-library"}
+	],
+
+	"code": [
+		{ "type": "handler", "event": "Start", "args": [], "code": [
+			{ "type": "call", "op": "say", "args": [{ "argtype": "String", "value": "Hello, World! :)" }] },
+			{ "type": "expression", "op": "call", "args": [{ "argtype": "event", "value": {"link": "refresh"} }] }
+		]}
+	]
+}

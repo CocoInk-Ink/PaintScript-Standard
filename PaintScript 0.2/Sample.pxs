@@ -1,0 +1,13 @@
+#PaintScript 0.2
+#Sprite Sprite_1
+
+// PaintScript 0.2 Automatically refreshes unless it's told not to.
+
+@Start {
+	say("Hello, World! :)");
+}
+
+norefresh function Tick():void
+{
+	call @refresh; // Force refresh.
+}
