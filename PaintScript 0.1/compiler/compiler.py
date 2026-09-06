@@ -8,6 +8,7 @@ from datetime import datetime
 from tokenizer import tokenize
 from parser import Parser
 from type_checker import check_program
+from linker import link_session
 
 
 def strip_comments(lines):
@@ -17,6 +18,7 @@ def strip_comments(lines):
     for line in lines:
         raw = line.rstrip("\n")
 
+        # block comments
         if "/*" in raw or "/**" in raw:
             in_block = True
 
@@ -25,8 +27,12 @@ def strip_comments(lines):
                 in_block = False
             continue
 
+        # inline // comments
+        if "//" in raw:
+            raw = raw.split("//", 1)[0]
+
         stripped = raw.strip()
-        if stripped.startswith("//") or stripped == "":
+        if stripped == "":
             continue
 
         out.append(raw)
@@ -52,60 +58,42 @@ def parse_metadata(lines):
     return version, sprite_name
 
 
-def compile_file(sprite_name, file_path, sessionid):
-    # Read file
+def compile_file(sprite_name, instance_name, file_path, sessionid):
     with open(file_path, "r", encoding="utf-8") as f:
         lines = f.readlines()
 
-    # Metadata
     version, file_sprite = parse_metadata(lines)
-    if sprite_name != file_sprite:
+    if instance_name != file_sprite:
         raise Exception(
-            f"Sprite name mismatch. Expected '{sprite_name}', found '{file_sprite}'."
+            f"Sprite name mismatch. Expected '{instance_name}', found '{file_sprite}'."
         )
 
-    # Strip comments from body
     body_lines = strip_comments(lines[2:])
     code = "\n".join(body_lines)
 
-    # Tokenize
     tokens = tokenize(code)
 
-    # Parse → AST
-    parser = Parser(tokens, version=version, sprite=sprite_name)
+    parser = Parser(tokens, version=version, sprite=sprite_name, instance=instance_name)
     program = parser.parse_program()
 
-    # Type check
     check_program(program)
 
-    # Convert AST → JSON IR
     ir = program.to_dict()
 
-    # Output folder
     out_dir = os.path.join("sessions", sessionid)
     os.makedirs(out_dir, exist_ok=True)
 
-    out_path = os.path.join(out_dir, f"{sprite_name}{datetime.now().timestamp()}.json")
+    out_path = os.path.join(out_dir, f"{instance_name}{datetime.now().timestamp()}.json")
 
     with open(out_path, "w", encoding="utf-8") as f:
         json.dump(ir, f, indent=4)
 
     print(f"Compiled → {out_path}")
 
-
-def link_session(sessionid):
-    """
-    Later we will merge all JSON files in ./sessions/<sessionid>/ into one program.
-    For now, just stub it.
-    """
-    print(f"Linking session '{sessionid}' (not implemented yet).")
-
-
 def main():
     args = sys.argv[1:]
 
     if "--link" in args:
-        # Example: python compiler.py --link --session abc123
         if "--session" not in args:
             print("Missing --session <id> for linking.")
             return
@@ -114,13 +102,13 @@ def main():
         link_session(sessionid)
         return
 
-    # Normal compile mode
-    if len(args) < 3:
-        print("Usage: python compiler.py <SpriteName> <ScriptFile> --session <id>")
+    if len(args) < 4:
+        print("Usage: python compiler.py <SpriteName> <InstanceName> <ScriptFile> --session <id>")
         return
 
-    sprite_name = args[0]
-    file_path = args[1]
+    sprite_name = args[0]      # display name
+    instance_name = args[1]    # safe code name
+    file_path = args[2]
 
     if "--session" not in args:
         print("Missing --session <id>")
@@ -129,7 +117,7 @@ def main():
     sessionid = args[args.index("--session") + 1]
 
     try:
-        compile_file(sprite_name, file_path, sessionid)
+        compile_file(sprite_name, instance_name, file_path, sessionid)
     except Exception as e:
         print(f"Compilation error: {e}")
 

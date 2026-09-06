@@ -9,9 +9,10 @@ class Node:
 
 
 class Program(Node):
-    def __init__(self, version, sprite, globals_, vars_, functions, events):
+    def __init__(self, version, sprite, instance, globals_, vars_, functions, events):
         self.version = version
         self.sprite = sprite
+        self.instance = instance
         self.globals = globals_
         self.vars = vars_
         self.functions = functions
@@ -25,23 +26,20 @@ class Program(Node):
                     g.name: g.to_dict()
                     for g in self.globals
                 },
-                "functions": {}  # functions at global scope (not used yet)
+                "functions": {}
             },
-            "targets": [
-                {
-                    "name": self.sprite,
-                    "instance": self.sprite,
-                    "variables": {
-                        v.name: v.to_dict()
-                        for v in self.vars
-                    },
-                    "functions": {
-                        f.name: f.to_dict()
-                        for f in self.functions
-                    },
-                    "events": self._events_to_dict()
-                }
-            ]
+
+            "name": self.sprite,
+            "instance": self.instance,
+            "variables": {
+                v.name: v.to_dict()
+                for v in self.vars
+            },
+            "functions": {
+                f.name: f.to_dict()
+                for f in self.functions
+            },
+            "events": self._events_to_dict()
         }
 
     def _events_to_dict(self):
@@ -134,7 +132,7 @@ class CallEvent(Node):
 
     def to_dict(self):
         return {
-            "op": "call",
+            "op": "event_call",
             "fields": {
                 "name": self.name,
                 "args": [a.to_dict() for a in self.args]
@@ -220,11 +218,13 @@ class Var(Node):
 # =========================
 
 class Parser:
-    def __init__(self, tokens, version, sprite):
+    def __init__(self, tokens, version, sprite, instance):
         self.tokens = tokens
         self.i = 0
         self.version = version
-        self.sprite = sprite
+        self.sprite = sprite        # display name
+        self.instance = instance    # safe name
+
 
     # -------------
     # Token helpers
@@ -291,7 +291,7 @@ class Parser:
 
             self.advance()
 
-        return Program(self.version, self.sprite, globals_, vars_, functions, events)
+        return Program(self.version, self.sprite, self.instance, globals_, vars_, functions, events)
 
     # -------------
     # Variable decl
@@ -438,7 +438,7 @@ class Parser:
     def parse_call(self):
         self.advance()  # call
 
-        # call @refresh
+        # call @refresh  (event call)
         if self.peek() and self.peek()["type"] == "AT_EVENT":
             at = self.advance()
             name = at["value"][1:]  # remove '@'
@@ -470,6 +470,16 @@ class Parser:
 
     def parse_function_call(self):
         name = self.advance()["value"]  # IDENT
+
+        # built-in say() → member call on this sprite
+        if name == "say":
+            args = []
+            if self.match("LPAREN"):
+                args = self.parse_arguments()
+                self.expect("RPAREN")
+            return MemberCall(self.sprite, "say", args)
+
+        # normal function call
         args = []
         if self.match("LPAREN"):
             args = self.parse_arguments()

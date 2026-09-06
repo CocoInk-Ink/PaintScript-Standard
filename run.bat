@@ -1,8 +1,10 @@
 cd "PaintScript 0.1"
 cd "compiler"
 
+rmdir /s /q sessions
+
 rem Compile
-python compiler.py Sprite_1 ..\Sample.pxs --session abc123
+python compiler.py "Sprite 1" "Sprite_1" ..\Sample.pxs --session abc123
 
 rem Link
-rem python compiler.py --link --session abc123
+python compiler.py --link --session abc123
