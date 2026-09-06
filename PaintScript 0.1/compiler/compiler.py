@@ -85,7 +85,7 @@ def compile_file(sprite_name, file_path, sessionid):
     out_dir = os.path.join("sessions", sessionid)
     os.makedirs(out_dir, exist_ok=True)
 
-    out_path = os.path.join(out_dir, f"{sprite_name}{datetime.now()}.json")
+    out_path = os.path.join(out_dir, f"{sprite_name}{datetime.now().timestamp()}.json")
 
     with open(out_path, "w", encoding="utf-8") as f:
         json.dump(ir, f, indent=4)
