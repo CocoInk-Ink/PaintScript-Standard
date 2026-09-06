@@ -466,7 +466,7 @@ class Parser:
         self.expect("RPAREN")
 
         # target sprite is current sprite instance name
-        return MemberCall(self.sprite, member_name, args)
+        return MemberCall(self.instance, member_name, args)
 
     def parse_function_call(self):
         name = self.advance()["value"]  # IDENT
@@ -477,7 +477,7 @@ class Parser:
             if self.match("LPAREN"):
                 args = self.parse_arguments()
                 self.expect("RPAREN")
-            return MemberCall(self.sprite, "say", args)
+            return MemberCall(self.instance, "say", args)
 
         # normal function call
         args = []
