@@ -1,0 +1,10 @@
+#PaintScript 0.1
+#Sprite Sprite_1
+//      ^
+//      | Sprite instance name
+
+// Start here.
+@Start {
+	say("Hello, World! :)"); // Say hello!
+	call @refresh; // Refresh the screen.
+}
