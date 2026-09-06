@@ -1,0 +1,20 @@
+#PaintScript 0.1
+#Sprite Sprite_1
+
+@Start {
+	function InnerFunction() {
+		OuterFunction();
+	}
+}
+
+function OuterFunction() {
+	function InnerFunction() {
+		var local = 5;
+		function InnerFunction() {
+			function OuterFunction() {}
+			OuterFunction();
+		}
+		InnerFunction();
+	}
+	InnerFunction();
+}

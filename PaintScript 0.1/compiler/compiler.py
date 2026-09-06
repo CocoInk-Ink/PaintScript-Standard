@@ -5,6 +5,7 @@ import json
 
 from tokenizer import tokenize
 from parser import Parser
+from type_checker import check_program
 
 
 def strip_comments(lines):
@@ -89,6 +90,9 @@ def compile_file(expected_sprite_name, file_path):
     # Parse into AST (Program)
     parser = Parser(tokens, version=version, sprite=sprite_name)
     program = parser.parse_program()
+    
+    # type check
+    check_program(program)
 
     # Convert AST to JSON IR
     ir = program.to_dict()

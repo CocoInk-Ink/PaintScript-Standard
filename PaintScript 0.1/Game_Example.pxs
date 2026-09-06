@@ -1,0 +1,276 @@
+#PaintScript 0.1
+#Sprite Player
+
+/**
+ * @author Jose (Nino) De Jesus
+ *
+ * Copyright (c) 2026 CocoInk Software
+ *
+ * Game.pxs
+ *
+ * An example script used for the definition of PaintScript and
+ * how it should work. This example mirrors an example project on Scratch (http://scratch.org/)
+ *
+ * The project follows a game engine tutorial by
+ *
+ * Griffpatch (https://www.youtube.com/watch?v=sebnyhBsXug&list=PLy4zsTUHwGJIqB6hg-sOxiwsJn7UfuCLw)
+ *
+ * This is PaintScript, a language designed for an app called xPaint.
+ * It shows similarity to both Scratch, ActionScript 3.0, and JavaScript.
+ *
+ * The first few lines must be metadata, the version of PaintScript and the instance name
+ * of the Sprite.
+ *
+ * #PaintScript {Version}
+ * #Sprite {Sprite_Instance_Name}
+ *
+ * The compiler gets the name of the sprite passed as an argument,
+ * it then checks to see if the names match, if they do, it builds, if not,
+ * it throws an Exception.
+**/
+
+/*
+	Not all keywords are here, so here are some of the keywords not included:
+
+	/// Conditionals ///
+
+// Normal if condition
+if (condition) {}
+
+// If, else if.
+if (condition) {} else if (condition) {}
+
+// If, else.
+if (condition) {} else {}
+
+// If, else if, else.
+if (condition) else if (condition) {} else {}
+
+You can flip the condition as well:
+
+if not (condition) {}
+// if/if not (condition) else if/if not etc...
+
+	/// Loops ///
+
+// Repeat a fixed number of times.
+repeat(3) {}
+repeat(list.length) {}
+
+// Repeat forever, code cannot go under. This will be the
+// final instruction in it's scope.
+forever {}
+
+// Repeat until condition is true.
+repeat until (condition) {}
+
+// Repeat while condition is true (repeat until false).
+while (condition) {}
+
+// For loops.
+for (var i = 0; i < size; i++) {}
+
+// Wait
+wait(3000); // 3000 milliseconds = 3 seconds.
+
+// Wait until (stops current thread and waits until condition is true)
+wait until(condition);
+*/
+
+// Global variables for more then just the sprite. Like a variable "for all sprites" in Scratch.
+// They connect to the root of the xPaint player not hooked to the sprite.
+global var Exit:String = empty;
+global var level:Number = 1;
+global var keys = {};
+
+// A public var is not a global one, but can be accessed when referring to this sprite.
+public var lives:Number = 3;
+
+// Sprite variables
+// Hooked to the sprite like the "for this sprite only" option in Scratch.
+var jumpKey = 0;
+
+var gravity = 0;
+
+/*
+	PaintScript uses events to start scripts, just like Scratch.
+	In PaintScript, there can be many event handlers for the same event, they all
+	run asynchronously at the same time.
+*/
+
+// A Start event handler
+@Start {
+	// Forever loop.
+	forever {
+		Reset();
+		GameLoop();
+	}
+}
+
+@Keydown(key:KeyboardKey) {
+	keys[key.name] = key;
+}
+
+@Keyup(key:KeyboardKey) {
+	keys[key.name] = empty;
+}
+
+/**
+ * Functions are the Same thing as a custom block is Scratch, except
+ * they do not have a run without screen refresh option.
+ * This is because all code runs without screen refresh and needs
+ * to be manually refreshed.
+ *
+ * They can not be made global, just like Scratch.
+ *
+ * Function is similar to ActionScript/TypeScript with the return type.
+ * With Both ActionScript and TypeScript being based on JavaScript.
+ */
+
+// Check if a key is pressed, the strict keyword makes sure that the function
+// gets the correct number of arguments like ActionScript, and not dynamic
+// like JavaScript. Use "{param} = {default_value}" for an optional
+// parameter.
+strict function isKeyPressed(key:*):Boolean {
+	var answer:String = empty;
+
+	if (key is KeyboardKey kk) {
+		if (keys[kk.name] != empty) answer = true;
+		else answer = false;
+	} else if (key is String ks) {
+		if (keys[ks] != empty) answer = true;
+		else answer = false;
+	} else answer = false;
+
+	return answer;
+}
+
+// Main Loop of the game
+function GameLoop() {
+	repeat until(Exit != empty) {
+
+		// Switch skin (costume) to hitbox
+		if (!isKeyPressed("Down Arrow")) {
+			SwitchSkin("Hitbox2"); // Crouching hitbox
+		} else {
+			SwitchSkin("Hitbox"); // Normal hitbox
+		}
+
+		/*
+			PaintScript brings Scratch's message system to
+			text based programming, starts new threads for each
+			handler running. Call all the message handlers with "Broadcast".
+			They can also be awaited until all threads are finished
+			by using "BroadcastAndWait".
+
+			Messages are also hooked to the root of the xPaint Player,
+			just like variables. Unlike variables and unlike how they work in Scratch,
+			they are very dynamic, and are not defined, only handled like normal events
+			in most programming languages. Because of the dynamic aspect, an error will not be thrown
+			if the message does not exist and it gets broadcasted.
+
+			But an "if (MessageExists(Message_Name))" statement should exist when handling
+			code you don't know to prevent bugs.
+		*/
+
+		// Process logic
+		BroadcastAndWait Tick;
+		Tick();
+
+		// Set skin
+		SetSpriteSkin();
+
+		/*
+			Forcefully call an event.
+		*/
+
+		// Refresh Screen
+		call @Refresh;
+	}
+
+	if (Exit == "win") {
+		level++; lives++
+	}
+	if (Exit == "die") {
+		// Bring lives down by one.
+		lives --;
+
+		// If we have no more lives, reset to 3, and bring the level down one.
+		if (lives < 1) {
+			lives = 3; level--;
+			if (level < 1) level = 1; // If level is less then 1, set to 1.
+		}
+	}
+
+	// Function ends, game gets reset.
+}
+
+// Reset game.
+function Reset() {
+	x = 0;	// Put x to 0, the center of the Screen horizontally.
+	y = 0;	// Put y to 0, the center of the Screen vertically.
+
+	gravity = 0;	// Reset gravity back to 0.
+	Exit = empty;	// Reset Exit to empty (null).
+}
+
+// Instead of costumes, we have skins.
+// Set the skin depending on the action.
+function SetSpriteSkin() {
+	if (gravity > 0 && gravity > 0) {
+		wait();
+	}
+}
+
+function HandleKeys() {
+	const jumpKeyPressed:Boolean = isKeyPressed("Space") || isKeyPressed("W"), isKeyPressed("Up Arrow");
+
+	if (jumpKeyPressed && jumpKey < 2) {
+		gravity = 20;
+		jumpKey++;
+	}
+
+	if (isKeyPressed("Left Arrow") || isKeyPressed("A")) {
+		changeVar(x, -3)
+	}
+	if (isKeyPressed("Right Arrow") || isKeyPressed("D")) {
+		changeVar(x, 3);
+	}
+}
+
+function CheckDie() {
+	if (isTouching["Danger"] == true) {
+		Exit = "die"
+	}
+	
+}
+
+// If we are touching the ground, force our character out, that way we don't get stuck in the ground.
+function Touching_Ground(up:Boolean) {
+	if (isTouching.contains("Ground")) gravity = 0; // Set gravity to 0 if we are in the ground.
+
+	// While inside the ground, push out.
+	while (isTouching.contains("Ground")) {
+		if (up) {
+			changeVar(this.y, 1);
+		} else {
+			changeVar(this.y, -1);
+		}
+	}
+}
+
+// A receive handler for the Tick message.
+@receive Tick { }
+
+// The Tick function.
+function Tick() {
+	HandleKeys();	// Handle input
+
+	// Update physics
+	changeVar(this.y, gravity);
+	gravity--;
+
+	Touching_Ground(gravity > 0);
+
+	// Gets refreshed after the tick.
+}

@@ -1,0 +1,841 @@
+{
+  "version": "PaintScript 0.1.0",
+  "globals": {
+    "variables": [
+      {
+        "op": "global_var",
+        "name": "Exit",
+        "type": "String",
+        "value": {
+          "kind": "literal",
+          "type": "String",
+          "value": "empty"
+        }
+      },
+      {
+        "op": "global_var",
+        "name": "level",
+        "type": "Number",
+        "value": {
+          "kind": "literal",
+          "type": "Number",
+          "value": 1
+        }
+      },
+      {
+        "op": "global_var",
+        "name": "keys",
+        "type": "*",
+        "value": {
+          "kind": "object",
+          "properties": {}
+        }
+      }
+    ]
+  },
+  "targets": [
+    {
+      "name": "Player",
+      "instance": "Player",
+
+      "variables": [
+        {
+          "op": "public_var",
+          "name": "lives",
+          "type": "Number",
+          "value": {
+            "kind": "literal",
+            "type": "Number",
+            "value": 3
+          }
+        },
+        {
+          "op": "var",
+          "name": "jumpKey",
+          "type": "*",
+          "value": {
+            "kind": "literal",
+            "type": "Number",
+            "value": 0
+          }
+        },
+        {
+          "op": "var",
+          "name": "gravity",
+          "type": "*",
+          "value": {
+            "kind": "literal",
+            "type": "Number",
+            "value": 0
+          }
+        }
+      ],
+
+      "functions": [
+        {
+          "name": "isKeyPressed",
+          "strict": true,
+          "params": [
+            { "name": "key", "type": "*" }
+          ],
+          "returnType": "Boolean",
+          "code": [
+            {
+              "op": "var",
+              "name": "answer",
+              "type": "String",
+              "value": {
+                "kind": "literal",
+                "type": "String",
+                "value": "empty"
+              }
+            },
+            {
+              "op": "if",
+              "condition": {
+                "kind": "expression",
+                "op": "is",
+                "args": [
+                  { "kind": "variable", "name": "key", "type": "*" },
+                  { "kind": "type", "value": "KeyboardKey" }
+                ]
+              },
+              "then": [
+                {
+                  "op": "var",
+                  "name": "kk",
+                  "type": "KeyboardKey",
+                  "value": {
+                    "kind": "cast",
+                    "type": "KeyboardKey",
+                    "value": { "kind": "variable", "name": "key", "type": "*" }
+                  }
+                },
+                {
+                  "op": "if",
+                  "condition": {
+                    "kind": "expression",
+                    "op": "!=",
+                    "args": [
+                      {
+                        "kind": "index",
+                        "target": { "kind": "global_var", "name": "keys" },
+                        "index": {
+                          "kind": "property",
+                          "target": { "kind": "variable", "name": "kk", "type": "KeyboardKey" },
+                          "name": "name"
+                        }
+                      },
+                      { "kind": "literal", "type": "String", "value": "empty" }
+                    ]
+                  },
+                  "then": [
+                    {
+                      "op": "assign",
+                      "target": { "kind": "variable", "name": "answer", "type": "String" },
+                      "value": { "kind": "literal", "type": "Boolean", "value": true }
+                    }
+                  ],
+                  "else": [
+                    {
+                      "op": "assign",
+                      "target": { "kind": "variable", "name": "answer", "type": "String" },
+                      "value": { "kind": "literal", "type": "Boolean", "value": false }
+                    }
+                  ]
+                }
+              ],
+              "else_if": [
+                {
+                  "condition": {
+                    "kind": "expression",
+                    "op": "is",
+                    "args": [
+                      { "kind": "variable", "name": "key", "type": "*" },
+                      { "kind": "type", "value": "String" }
+                    ]
+                  },
+                  "code": [
+                    {
+                      "op": "var",
+                      "name": "ks",
+                      "type": "String",
+                      "value": {
+                        "kind": "cast",
+                        "type": "String",
+                        "value": { "kind": "variable", "name": "key", "type": "*" }
+                      }
+                    },
+                    {
+                      "op": "if",
+                      "condition": {
+                        "kind": "expression",
+                        "op": "!=",
+                        "args": [
+                          {
+                            "kind": "index",
+                            "target": { "kind": "global_var", "name": "keys" },
+                            "index": { "kind": "variable", "name": "ks", "type": "String" }
+                          },
+                          { "kind": "literal", "type": "String", "value": "empty" }
+                        ]
+                      },
+                      "then": [
+                        {
+                          "op": "assign",
+                          "target": { "kind": "variable", "name": "answer", "type": "String" },
+                          "value": { "kind": "literal", "type": "Boolean", "value": true }
+                        }
+                      ],
+                      "else": [
+                        {
+                          "op": "assign",
+                          "target": { "kind": "variable", "name": "answer", "type": "String" },
+                          "value": { "kind": "literal", "type": "Boolean", "value": false }
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ],
+              "else": [
+                {
+                  "op": "assign",
+                  "target": { "kind": "variable", "name": "answer", "type": "String" },
+                  "value": { "kind": "literal", "type": "Boolean", "value": false }
+                }
+              ]
+            },
+            {
+              "op": "return",
+              "value": { "kind": "variable", "name": "answer", "type": "String" }
+            }
+          ]
+        },
+
+        {
+          "name": "GameLoop",
+          "params": [],
+          "returnType": "*",
+          "code": [
+            {
+              "op": "repeat_until",
+              "condition": {
+                "kind": "expression",
+                "op": "!=",
+                "args": [
+                  { "kind": "global_var", "name": "Exit", "type": "String" },
+                  { "kind": "literal", "type": "String", "value": "empty" }
+                ]
+              },
+              "code": [
+                {
+                  "op": "if",
+                  "condition": {
+                    "kind": "expression",
+                    "op": "not",
+                    "args": [
+                      {
+                        "kind": "call",
+                        "name": "isKeyPressed",
+                        "args": [
+                          { "kind": "literal", "type": "String", "value": "Down Arrow" }
+                        ]
+                      }
+                    ]
+                  },
+                  "then": [
+                    {
+                      "op": "call",
+                      "name": "SwitchSkin",
+                      "args": [
+                        { "kind": "literal", "type": "String", "value": "Hitbox2" }
+                      ]
+                    }
+                  ],
+                  "else": [
+                    {
+                      "op": "call",
+                      "name": "SwitchSkin",
+                      "args": [
+                        { "kind": "literal", "type": "String", "value": "Hitbox" }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "op": "broadcast_wait",
+                  "message": "Tick"
+                },
+                {
+                  "op": "call",
+                  "name": "Tick",
+                  "args": []
+                },
+                {
+                  "op": "call",
+                  "name": "SetSpriteSkin",
+                  "args": []
+                },
+                {
+                  "op": "event_call",
+                  "name": "@Refresh",
+                  "args": []
+                }
+              ]
+            },
+            {
+              "op": "if",
+              "condition": {
+                "kind": "expression",
+                "op": "==",
+                "args": [
+                  { "kind": "global_var", "name": "Exit", "type": "String" },
+                  { "kind": "literal", "type": "String", "value": "win" }
+                ]
+              },
+              "then": [
+                {
+                  "op": "expression",
+                  "value": {
+                    "kind": "expression",
+                    "op": "++",
+                    "args": [
+                      { "kind": "global_var", "name": "level", "type": "Number" }
+                    ]
+                  }
+                },
+                {
+                  "op": "expression",
+                  "value": {
+                    "kind": "expression",
+                    "op": "++",
+                    "args": [
+                      { "kind": "public_var", "name": "lives", "type": "Number" }
+                    ]
+                  }
+                }
+              ],
+              "else_if": [
+                {
+                  "condition": {
+                    "kind": "expression",
+                    "op": "==",
+                    "args": [
+                      { "kind": "global_var", "name": "Exit", "type": "String" },
+                      { "kind": "literal", "type": "String", "value": "die" }
+                    ]
+                  },
+                  "code": [
+                    {
+                      "op": "expression",
+                      "value": {
+                        "kind": "expression",
+                        "op": "--",
+                        "args": [
+                          { "kind": "public_var", "name": "lives", "type": "Number" }
+                        ]
+                      }
+                    },
+                    {
+                      "op": "if",
+                      "condition": {
+                        "kind": "expression",
+                        "op": "<",
+                        "args": [
+                          { "kind": "public_var", "name": "lives", "type": "Number" },
+                          { "kind": "literal", "type": "Number", "value": 1 }
+                        ]
+                      },
+                      "then": [
+                        {
+                          "op": "assign",
+                          "target": { "kind": "public_var", "name": "lives", "type": "Number" },
+                          "value": { "kind": "literal", "type": "Number", "value": 3 }
+                        },
+                        {
+                          "op": "expression",
+                          "value": {
+                            "kind": "expression",
+                            "op": "--",
+                            "args": [
+                              { "kind": "global_var", "name": "level", "type": "Number" }
+                            ]
+                          }
+                        },
+                        {
+                          "op": "if",
+                          "condition": {
+                            "kind": "expression",
+                            "op": "<",
+                            "args": [
+                              { "kind": "global_var", "name": "level", "type": "Number" },
+                              { "kind": "literal", "type": "Number", "value": 1 }
+                            ]
+                          },
+                          "then": [
+                            {
+                              "op": "assign",
+                              "target": { "kind": "global_var", "name": "level", "type": "Number" },
+                              "value": { "kind": "literal", "type": "Number", "value": 1 }
+                            }
+                          ],
+                          "else": []
+                        }
+                      ],
+                      "else": []
+                    }
+                  ]
+                }
+              ],
+              "else": []
+            }
+          ]
+        },
+
+        {
+          "name": "Reset",
+          "params": [],
+          "returnType": "*",
+          "code": [
+            {
+              "op": "assign",
+              "target": { "kind": "property", "target": { "kind": "this" }, "name": "x" },
+              "value": { "kind": "literal", "type": "Number", "value": 0 }
+            },
+            {
+              "op": "assign",
+              "target": { "kind": "property", "target": { "kind": "this" }, "name": "y" },
+              "value": { "kind": "literal", "type": "Number", "value": 0 }
+            },
+            {
+              "op": "assign",
+              "target": { "kind": "variable", "name": "gravity", "type": "*" },
+              "value": { "kind": "literal", "type": "Number", "value": 0 }
+            },
+            {
+              "op": "assign",
+              "target": { "kind": "global_var", "name": "Exit", "type": "String" },
+              "value": { "kind": "literal", "type": "String", "value": "empty" }
+            }
+          ]
+        },
+
+        {
+          "name": "SetSpriteSkin",
+          "params": [],
+          "returnType": "*",
+          "code": [
+            {
+              "op": "if",
+              "condition": {
+                "kind": "expression",
+                "op": "&&",
+                "args": [
+                  {
+                    "kind": "expression",
+                    "op": ">",
+                    "args": [
+                      { "kind": "variable", "name": "gravity", "type": "*" },
+                      { "kind": "literal", "type": "Number", "value": 0 }
+                    ]
+                  },
+                  {
+                    "kind": "expression",
+                    "op": ">",
+                    "args": [
+                      { "kind": "variable", "name": "gravity", "type": "*" },
+                      { "kind": "literal", "type": "Number", "value": 0 }
+                    ]
+                  }
+                ]
+              },
+              "then": [
+                {
+                  "op": "call",
+                  "name": "wait",
+                  "args": []
+                }
+              ],
+              "else": []
+            }
+          ]
+        },
+
+        {
+          "name": "HandleKeys",
+          "params": [],
+          "returnType": "*",
+          "code": [
+            {
+              "op": "var",
+              "name": "jumpKeyPressed",
+              "type": "Boolean",
+              "value": {
+                "kind": "expression",
+                "op": "||",
+                "args": [
+                  {
+                    "kind": "call",
+                    "name": "isKeyPressed",
+                    "args": [
+                      { "kind": "literal", "type": "String", "value": "Space" }
+                    ]
+                  },
+                  {
+                    "kind": "expression",
+                    "op": "||",
+                    "args": [
+                      {
+                        "kind": "call",
+                        "name": "isKeyPressed",
+                        "args": [
+                          { "kind": "literal", "type": "String", "value": "W" }
+                        ]
+                      },
+                      {
+                        "kind": "call",
+                        "name": "isKeyPressed",
+                        "args": [
+                          { "kind": "literal", "type": "String", "value": "Up Arrow" }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            {
+              "op": "if",
+              "condition": {
+                "kind": "expression",
+                "op": "&&",
+                "args": [
+                  { "kind": "variable", "name": "jumpKeyPressed", "type": "Boolean" },
+                  {
+                    "kind": "expression",
+                    "op": "<",
+                    "args": [
+                      { "kind": "variable", "name": "jumpKey", "type": "*" },
+                      { "kind": "literal", "type": "Number", "value": 2 }
+                    ]
+                  }
+                ]
+              },
+              "then": [
+                {
+                  "op": "assign",
+                  "target": { "kind": "variable", "name": "gravity", "type": "*" },
+                  "value": { "kind": "literal", "type": "Number", "value": 20 }
+                },
+                {
+                  "op": "expression",
+                  "value": {
+                    "kind": "expression",
+                    "op": "++",
+                    "args": [
+                      { "kind": "variable", "name": "jumpKey", "type": "*" }
+                    ]
+                  }
+                }
+              ],
+              "else": []
+            },
+            {
+              "op": "if",
+              "condition": {
+                "kind": "expression",
+                "op": "||",
+                "args": [
+                  {
+                    "kind": "call",
+                    "name": "isKeyPressed",
+                    "args": [
+                      { "kind": "literal", "type": "String", "value": "Left Arrow" }
+                    ]
+                  },
+                  {
+                    "kind": "call",
+                    "name": "isKeyPressed",
+                    "args": [
+                      { "kind": "literal", "type": "String", "value": "A" }
+                    ]
+                  }
+                ]
+              },
+              "then": [
+                {
+                  "op": "call",
+                  "name": "changeVar",
+                  "args": [
+                    { "kind": "property", "target": { "kind": "this" }, "name": "x" },
+                    { "kind": "literal", "type": "Number", "value": -3 }
+                  ]
+                }
+              ],
+              "else": []
+            },
+            {
+              "op": "if",
+              "condition": {
+                "kind": "expression",
+                "op": "||",
+                "args": [
+                  {
+                    "kind": "call",
+                    "name": "isKeyPressed",
+                    "args": [
+                      { "kind": "literal", "type": "String", "value": "Right Arrow" }
+                    ]
+                  },
+                  {
+                    "kind": "call",
+                    "name": "isKeyPressed",
+                    "args": [
+                      { "kind": "literal", "type": "String", "value": "D" }
+                    ]
+                  }
+                ]
+              },
+              "then": [
+                {
+                  "op": "call",
+                  "name": "changeVar",
+                  "args": [
+                    { "kind": "property", "target": { "kind": "this" }, "name": "x" },
+                    { "kind": "literal", "type": "Number", "value": 3 }
+                  ]
+                }
+              ],
+              "else": []
+            }
+          ]
+        },
+
+        {
+          "name": "CheckDie",
+          "params": [],
+          "returnType": "*",
+          "code": [
+            {
+              "op": "if",
+              "condition": {
+                "kind": "expression",
+                "op": "==",
+                "args": [
+                  {
+                    "kind": "index",
+                    "target": { "kind": "variable", "name": "isTouching", "type": "*" },
+                    "index": { "kind": "literal", "type": "String", "value": "Danger" }
+                  },
+                  { "kind": "literal", "type": "Boolean", "value": true }
+                ]
+              },
+              "then": [
+                {
+                  "op": "assign",
+                  "target": { "kind": "global_var", "name": "Exit", "type": "String" },
+                  "value": { "kind": "literal", "type": "String", "value": "die" }
+                }
+              ],
+              "else": []
+            }
+          ]
+        },
+
+        {
+          "name": "Touching_Ground",
+          "params": [
+            { "name": "up", "type": "Boolean" }
+          ],
+          "returnType": "*",
+          "code": [
+            {
+              "op": "if",
+              "condition": {
+                "kind": "call",
+                "name": "contains",
+                "args": [
+                  { "kind": "variable", "name": "isTouching", "type": "*" },
+                  { "kind": "literal", "type": "String", "value": "Ground" }
+                ]
+              },
+              "then": [
+                {
+                  "op": "assign",
+                  "target": { "kind": "variable", "name": "gravity", "type": "*" },
+                  "value": { "kind": "literal", "type": "Number", "value": 0 }
+                }
+              ],
+              "else": []
+            },
+            {
+              "op": "while",
+              "condition": {
+                "kind": "call",
+                "name": "contains",
+                "args": [
+                  { "kind": "variable", "name": "isTouching", "type": "*" },
+                  { "kind": "literal", "type": "String", "value": "Ground" }
+                ]
+              },
+              "code": [
+                {
+                  "op": "if",
+                  "condition": { "kind": "variable", "name": "up", "type": "Boolean" },
+                  "then": [
+                    {
+                      "op": "call",
+                      "name": "changeVar",
+                      "args": [
+                        { "kind": "property", "target": { "kind": "this" }, "name": "y" },
+                        { "kind": "literal", "type": "Number", "value": 1 }
+                      ]
+                    }
+                  ],
+                  "else": [
+                    {
+                      "op": "call",
+                      "name": "changeVar",
+                      "args": [
+                        { "kind": "property", "target": { "kind": "this" }, "name": "y" },
+                        { "kind": "literal", "type": "Number", "value": -1 }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+
+        {
+          "name": "Tick",
+          "params": [],
+          "returnType": "*",
+          "code": [
+            {
+              "op": "call",
+              "name": "HandleKeys",
+              "args": []
+            },
+            {
+              "op": "call",
+              "name": "changeVar",
+              "args": [
+                { "kind": "property", "target": { "kind": "this" }, "name": "y" },
+                { "kind": "variable", "name": "gravity", "type": "*" }
+              ]
+            },
+            {
+              "op": "expression",
+              "value": {
+                "kind": "expression",
+                "op": "--",
+                "args": [
+                  { "kind": "variable", "name": "gravity", "type": "*" }
+                ]
+              }
+            },
+            {
+              "op": "call",
+              "name": "Touching_Ground",
+              "args": [
+                {
+                  "kind": "expression",
+                  "op": ">",
+                  "args": [
+                    { "kind": "variable", "name": "gravity", "type": "*" },
+                    { "kind": "literal", "type": "Number", "value": 0 }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ],
+
+      "events": {
+        "Start": [
+          [
+            {
+              "op": "forever",
+              "code": [
+                {
+                  "op": "call",
+                  "name": "Reset",
+                  "args": []
+                },
+                {
+                  "op": "call",
+                  "name": "GameLoop",
+                  "args": []
+                }
+              ]
+            }
+          ]
+        ],
+
+        "Keydown": [
+          [
+            {
+              "op": "param",
+              "name": "key",
+              "type": "KeyboardKey"
+            },
+            {
+              "op": "assign",
+              "target": {
+                "kind": "index",
+                "target": { "kind": "global_var", "name": "keys", "type": "*" },
+                "index": {
+                  "kind": "property",
+                  "target": { "kind": "variable", "name": "key", "type": "KeyboardKey" },
+                  "name": "name"
+                }
+              },
+              "value": { "kind": "variable", "name": "key", "type": "KeyboardKey" }
+            }
+          ]
+        ],
+
+        "Keyup": [
+          [
+            {
+              "op": "param",
+              "name": "key",
+              "type": "KeyboardKey"
+            },
+            {
+              "op": "assign",
+              "target": {
+                "kind": "index",
+                "target": { "kind": "global_var", "name": "keys", "type": "*" },
+                "index": {
+                  "kind": "property",
+                  "target": { "kind": "variable", "name": "key", "type": "KeyboardKey" },
+                  "name": "name"
+                }
+              },
+              "value": { "kind": "literal", "type": "String", "value": "empty" }
+            }
+          ]
+        ],
+
+        "receive": [
+          [
+            {
+              "op": "message_handler",
+              "message": "Tick",
+              "code": []
+            }
+          ]
+        ],
+
+        "receive-meta": [
+          { "messages": ["Tick"] }
+        ]
+      }
+    }
+  ]
+}
