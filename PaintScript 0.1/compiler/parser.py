@@ -44,13 +44,17 @@ class Program(Node):
 
     def _events_to_dict(self):
         events_map = {}
+
         for e in self.events:
-            key = f"@{e.name.lower()}"
+
+            key = e.name.capitalize()
+
             if key not in events_map:
                 events_map[key] = []
-            events_map[key].append(e.to_dict())
-        return events_map
 
+            events_map[key].append(e.to_dict())
+
+        return events_map
 
 class Variable(Node):
     def __init__(self, name, type_, scope, is_public, is_private):
@@ -103,10 +107,7 @@ class EventHandler(Node):
         self.code = code          # list of statements
 
     def to_dict(self):
-        return {
-            "message": self.messages,
-            "code": [stmt.to_dict() for stmt in self.code]
-        }
+        return [stmt.to_dict() for stmt in self.code]
 
 
 # =========================

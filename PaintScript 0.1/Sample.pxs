@@ -1,7 +1,6 @@
 #PaintScript 0.1
 #Sprite Sprite_1
-//      ^
-//      | Sprite instance name
+// Sprite instance name
 
 // Start here.
 @Start {
