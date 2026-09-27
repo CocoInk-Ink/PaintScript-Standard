@@ -90,6 +90,7 @@ def compile_file(sprite_name, instance_name, file_path, sessionid):
 
     print(f"Compiled → {out_path}")
 
+# compiler_wasm is main for compiling to wasm.
 def main():
     args = sys.argv[1:]
 
