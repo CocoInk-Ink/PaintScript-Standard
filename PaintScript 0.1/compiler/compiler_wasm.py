@@ -16,8 +16,9 @@ def compile_script(sprite_name, instance_name, script_path, session_id):
     # Run the compiler (writes files into /sessions/<id>/)
     compiler.compile_file(sprite_name, instance_name, script_path, session_id)
 
+def link(session_id):
     # Run the linker (writes linked.json)
     linker.link_session(session_id)
-
-    # Return the path to the linked file (C# will read it directly)
+    
+     # Return the path to the linked file (C# will read it directly)
     return f"/sessions/{session_id}/linked.json"
