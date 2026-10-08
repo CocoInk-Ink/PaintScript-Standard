@@ -1,5 +1,7 @@
+cd %~dp0
+
 cd "PaintScript 0.1"
-cd "compiler"
+cd "old_compiler"
 
 rmdir /s /q sessions
 

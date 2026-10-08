@@ -1,3 +1,5 @@
+cd %~dp0
+
 cd "PaintScript 0.1"
 cd "compiler"
 
