@@ -17,13 +17,14 @@ export class Program extends Node {
 }
 
 export class Variable extends Node {
-    constructor(name, type_, scope = "sprite", isPublic = false, isPrivate = false) {
+    constructor(name, type_, scope = "sprite", isPublic = false, isPrivate = false, initializer = null) {
         super();
         this.name = name;
         this.type = type_;
         this.scope = scope;
         this.isPublic = isPublic;
         this.isPrivate = isPrivate;
+        this.initializer = initializer;
     }
 }
 
@@ -100,6 +101,20 @@ export class VarAssign extends Node {
         super();
         this.target = target;
         this.value = value;
+    }
+}
+
+export class RawExpr extends Node {
+    constructor(raw) {
+        super();
+        this.raw = raw;
+    }
+}
+
+export class RawStatement extends Node {
+    constructor(raw) {
+        super();
+        this.raw = raw;
     }
 }
 

@@ -12,7 +12,11 @@ import {
     Repeat,
     VarAssign,
     Literal,
-    Var
+    Var,
+    BinaryOp,
+    UnaryOp,
+    RawExpr,
+    RawStatement
 } from "./ast_nodes.js";
 
 function serialize_expression(node) {
@@ -29,6 +33,36 @@ function serialize_expression(node) {
             kind: "var",
             name: node.name
         };
+    }
+
+    if (node instanceof MemberCall) {
+        return {
+            kind: "member",
+            target: node.target,
+            method: node.method,
+            args: node.args.map(serialize_expression)
+        };
+    }
+
+    if (node instanceof BinaryOp) {
+        return {
+            kind: "binary",
+            op: node.op,
+            left: serialize_expression(node.left),
+            right: serialize_expression(node.right)
+        };
+    }
+
+    if (node instanceof UnaryOp) {
+        return {
+            kind: "unary",
+            op: node.op,
+            expr: serialize_expression(node.expr)
+        };
+    }
+
+    if (node instanceof RawExpr) {
+        return node.raw;
     }
 
     throw new Error(`Unsupported expression in IR: ${node?.constructor?.name ?? typeof node}`);
@@ -102,7 +136,7 @@ function serialize_statement(node) {
             fields: {
                 condition: serialize_expression(node.condition),
                 then: node.then_block.map(serialize_statement),
-                else: node.else_block?.map(serialize_statement) ?? []
+                else: node.else_block?.map ? node.else_block.map(serialize_statement) : []
             }
         };
     }
@@ -116,6 +150,10 @@ function serialize_statement(node) {
                 body: node.body.map(serialize_statement)
             }
         };
+    }
+
+    if (node && node.raw) {
+        return node.raw;
     }
 
     throw new Error(`Unsupported statement in IR: ${node?.constructor?.name ?? typeof node}`);
