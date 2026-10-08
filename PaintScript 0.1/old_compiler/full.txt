@@ -1,0 +1,528 @@
+Python:
+
+# ast_nodes.py
+
+class Node:
+    pass
+
+class Program(Node):
+    def __init__(self, version, sprite, globals, publics, vars, events, functions):
+        self.version = version
+        self.sprite = sprite
+        self.globals = globals
+        self.publics = publics
+        self.vars = vars
+        self.events = events
+        self.functions = functions
+
+class Event(Node):
+    def __init__(self, name, params, body):
+        self.name = name
+        self.params = params
+        self.body = body
+
+class Function(Node):
+    def __init__(self, name, params, return_type, strict, body):
+        self.name = name
+        self.params = params
+        self.return_type = return_type
+        self.strict = strict
+        self.body = body
+
+# Statements
+class Block(Node):
+    def __init__(self, statements):
+        self.statements = statements
+
+class VarAssign(Node):
+    def __init__(self, target, value):
+        self.target = target
+        self.value = value
+
+class If(Node):
+    def __init__(self, condition, then_block, else_block=None):
+        self.condition = condition
+        self.then_block = then_block
+        self.else_block = else_block
+
+class Repeat(Node):
+    def __init__(self, condition, body, mode):
+        self.condition = condition
+        self.body = body
+        self.mode = mode  # "times", "until", "while", "forever"
+
+class Call(Node):
+    def __init__(self, name, args):
+        self.name = name
+        self.args = args
+
+# Expressions
+class BinaryOp(Node):
+    def __init__(self, op, left, right):
+        self.op = op
+        self.left = left
+        self.right = right
+
+class UnaryOp(Node):
+    def __init__(self, op, expr):
+        self.op = op
+        self.expr = expr
+
+class Var(Node):
+    def __init__(self, name):
+        self.name = name
+
+class Literal(Node):
+    def __init__(self, value):
+        self.value = value
+
+# compiler_wasm.py
+
+import os
+import json
+
+# Import your existing compiler modules
+import compiler
+import linker
+
+def compile_script(sprite_name, instance_name, script_path, session_id):
+    """
+    This function is the WASM entry point.
+    It runs the compiler exactly as-is, using the WASI filesystem.
+    """
+
+    # Run the compiler (writes files into /sessions/<id>/)
+    compiler.compile_file(sprite_name, instance_name, script_path, session_id)
+
+def link(session_id):
+    # Run the linker (writes linked.json)
+    linker.link_session(session_id)
+    
+     # Return the path to the linked file (C# will read it directly)
+    return f"/sessions/{session_id}/linked.json"
+
+# compiler.py
+
+import sys
+import os
+import json
+from datetime import datetime
+
+from tokenizer import tokenize
+from parser import Parser
+from type_checker import check_program
+from linker import link_session
+
+
+def strip_comments(lines):
+    out = []
+    in_block = False
+
+    for line in lines:
+        raw = line.rstrip("\n")
+
+        # block comments
+        if "/*" in raw or "/**" in raw:
+            in_block = True
+
+        if in_block:
+            if "*/" in raw:
+                in_block = False
+            continue
+
+        # inline // comments
+        if "//" in raw:
+            raw = raw.split("//", 1)[0]
+
+        stripped = raw.strip()
+        if stripped == "":
+            continue
+
+        out.append(raw)
+
+    return out
+
+
+def parse_metadata(lines):
+    if len(lines) < 2:
+        raise Exception("File missing metadata header.")
+
+    paint = lines[0].strip()
+    sprite = lines[1].strip()
+
+    if not paint.startswith("#PaintScript"):
+        raise Exception("Missing #PaintScript metadata.")
+    if not sprite.startswith("#Sprite"):
+        raise Exception("Missing #Sprite metadata.")
+
+    version = paint.split(" ", 1)[1].strip()
+    sprite_name = sprite.split(" ", 1)[1].strip()
+
+    return version, sprite_name
+
+
+def compile_file(sprite_name, instance_name, file_path, sessionid):
+    with open(file_path, "r", encoding="utf-8") as f:
+        lines = f.readlines()
+
+    version, file_sprite = parse_metadata(lines)
+    if instance_name != file_sprite:
+        raise Exception(
+            f"Sprite name mismatch. Expected '{instance_name}', found '{file_sprite}'."
+        )
+
+    body_lines = strip_comments(lines[2:])
+    code = "\n".join(body_lines)
+
+    tokens = tokenize(code)
+
+    parser = Parser(tokens, version=version, sprite=sprite_name, instance=instance_name)
+    program = parser.parse_program()
+
+    check_program(program)
+
+    ir = program.to_dict()
+
+    out_dir = os.path.join("sessions", sessionid)
+    os.makedirs(out_dir, exist_ok=True)
+
+    out_path = os.path.join(out_dir, f"{instance_name}{datetime.now().timestamp()}.json")
+
+    with open(out_path, "w", encoding="utf-8") as f:
+        json.dump(ir, f, indent=4)
+
+    print(f"Compiled → {out_path}")
+
+# compiler_wasm is main for compiling to wasm.
+def main():
+    args = sys.argv[1:]
+
+    if "--link" in args:
+        if "--session" not in args:
+            print("Missing --session <id> for linking.")
+            return
+
+        sessionid = args[args.index("--session") + 1]
+        link_session(sessionid)
+        return
+
+    if len(args) < 4:
+        print("Usage: python compiler.py <SpriteName> <InstanceName> <ScriptFile> --session <id>")
+        return
+
+    sprite_name = args[0]      # display name
+    instance_name = args[1]    # safe code name
+    file_path = args[2]
+
+    if "--session" not in args:
+        print("Missing --session <id>")
+        return
+
+    sessionid = args[args.index("--session") + 1]
+
+    try:
+        compile_file(sprite_name, instance_name, file_path, sessionid)
+    except Exception as e:
+        print(f"Compilation error: {e}")
+
+
+if __name__ == "__main__":
+    main()
+
+# ir.py
+
+def ast_to_json(node):
+    if isinstance(node, Program):
+        return {
+            "version": node.version,
+            "sprite": node.sprite,
+            "globals": node.globals,
+            "publics": node.publics,
+            "vars": node.vars,
+            "events": [ast_to_json(e) for e in node.events],
+            "functions": [ast_to_json(f) for f in node.functions]
+        }
+
+    if isinstance(node, Event):
+        return {
+            "type": "event",
+            "name": node.name,
+            "params": node.params,
+            "body": ast_to_json(node.body)
+        }
+
+    if isinstance(node, Function):
+        return {
+            "type": "function",
+            "name": node.name,
+            "params": node.params,
+            "return": node.return_type,
+            "strict": node.strict,
+            "body": ast_to_json(node.body)
+        }
+
+    if isinstance(node, Block):
+        return {
+            "type": "block",
+            "statements": [ast_to_json(s) for s in node.statements]
+        }
+
+    if isinstance(node, Literal):
+        return {"type": "literal", "value": node.value}
+
+    return {"type": "unknown"}
+
+# linker.py
+
+import os
+import json
+
+
+def merge_sprite_targets(targets):
+    merged = {}
+
+    for t in targets:
+        name = t["name"]
+
+        if name not in merged:
+            merged[name] = {
+                "name": t["name"],
+                "instance": t["instance"],
+                "variables": {},
+                "functions": {},
+                "events": {}
+            }
+
+        # merge variables
+        merged[name]["variables"].update(t.get("variables", {}))
+
+        # merge functions
+        merged[name]["functions"].update(t.get("functions", {}))
+
+        # merge events
+        for evt_name, evt_list in t.get("events", {}).items():
+            if evt_name not in merged[name]["events"]:
+                merged[name]["events"][evt_name] = []
+            merged[name]["events"][evt_name].extend(evt_list)
+
+    return list(merged.values())
+
+
+def link_session(sessionid):
+    session_dir = os.path.join("sessions", sessionid)
+    if not os.path.isdir(session_dir):
+        print(f"No session directory found for '{sessionid}'.")
+        return
+
+    files = [
+        os.path.join(session_dir, f)
+        for f in os.listdir(session_dir)
+        if f.endswith(".json") and f != "linked.json"
+    ]
+
+    if not files:
+        print(f"No compiled sprite files found in session '{sessionid}'.")
+        return
+
+    linked_version = None
+    linked_globals_vars = {}
+    linked_globals_funcs = {}
+    sprite_targets = []
+
+    for path in files:
+        with open(path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+
+        if linked_version is None:
+            linked_version = data.get("version", "0.1.0")
+
+        # merge globals
+        globals_ = data.get("globals", {})
+        linked_globals_vars.update(globals_.get("variables", {}))
+        linked_globals_funcs.update(globals_.get("functions", {}))
+
+        # extract the single sprite target
+        sprite_targets.append({
+            "name": data["name"],
+            "instance": data["instance"],
+            "variables": data.get("variables", {}),
+            "functions": data.get("functions", {}),
+            "events": data.get("events", {})
+        })
+
+    # merge sprite targets with same name
+    merged_targets = merge_sprite_targets(sprite_targets)
+
+    linked_program = {
+        "version": linked_version,
+        "permissions": {
+            "filesystem": False,
+            "networking": False
+        },
+        "globals": {
+            "variables": linked_globals_vars,
+            "functions": linked_globals_funcs
+        },
+        "targets": merged_targets
+    }
+
+    out_path = os.path.join(session_dir, "linked.json")
+    with open(out_path, "w", encoding="utf-8") as f:
+        json.dump(linked_program, f, indent=4)
+
+    print(f"Linked program → {out_path}")
+
+
+# tokenizer.py
+
+import re
+
+TOKEN_SPEC = [
+    # Literals
+    ("NUMBER",      r"\d+(\.\d+)?"),
+    ("STRING",      r"\".*?\""),
+
+    # Events like @Start, @Keydown, @receive
+    ("AT_EVENT",    r"@[A-Za-z_][A-Za-z0-9_]*"),
+
+    # Identifiers and keywords
+    ("IDENT",       r"[A-Za-z_][A-Za-z0-9_]*"),
+
+    # Operators
+    ("OP",          r"==|!=|<=|>=|&&|\|\||\+|-|\*|/|=|<|>|!"),
+
+    # Punctuation
+    ("LPAREN",      r"\("),
+    ("RPAREN",      r"\)"),
+    ("LBRACE",      r"\{"),
+    ("RBRACE",      r"\}"),
+    ("LBRACKET",    r"\["),
+    ("RBRACKET",    r"\]"),
+    ("COLON",       r":"),
+    ("SEMICOLON",   r";"),
+    ("COMMA",       r","),
+    ("DOT",         r"\."),
+
+    # Whitespace
+    ("NEWLINE",     r"\n"),
+    ("SKIP",        r"[ \t]+"),
+
+    # Anything else is an error
+    ("MISMATCH",    r"."),
+]
+
+MASTER_REGEX = "|".join(f"(?P<{name}>{pattern})" for name, pattern in TOKEN_SPEC)
+
+
+def tokenize(code):
+    tokens = []
+
+    for match in re.finditer(MASTER_REGEX, code):
+        kind = match.lastgroup
+        value = match.group()
+
+        if kind in ("SKIP", "NEWLINE"):
+            continue
+
+        if kind == "MISMATCH":
+            raise SyntaxError(f"Unexpected character: {value}")
+
+        tokens.append({"type": kind, "value": value})
+
+    return tokens
+
+# type_checker.py
+
+class TypeEnv:
+    def __init__(self):
+        self.vars = {}      # name -> type
+        self.funcs = {}     # name -> (param_types, return_type)
+
+    def add_var(self, name, type_):
+        self.vars[name] = type_
+
+    def get_var(self, name):
+        return self.vars.get(name, "*")
+
+    def add_func(self, name, param_types, return_type):
+        self.funcs[name] = (param_types, return_type)
+
+    def get_func(self, name):
+        return self.funcs.get(name, ([], "*"))
+
+
+def can_assign(to_type, from_type):
+    if to_type == from_type:
+        return True
+    if from_type == "empty":
+        return True
+    if to_type == "*" or from_type == "*":
+        return True
+    # simple conversions: String <-> Number/int
+    if to_type in ("Number", "int") and from_type == "String":
+        return True
+    if to_type == "String" and from_type in ("Number", "int"):
+        return True
+    return False
+
+
+def expr_type(env, expr):
+    from parser import Literal, Var  # adjust import if needed
+
+    if isinstance(expr, Literal):
+        return expr.type
+    if isinstance(expr, Var):
+        return env.get_var(expr.name)
+    return "*"
+
+
+def check_program(program):
+    from parser import Variable, Function, Broadcast, CallFunction, CallEvent, MemberCall
+
+    env = TypeEnv()
+
+    # globals
+    for g in program.globals:
+        env.add_var(g.name, g.type)
+
+    # sprite vars
+    for v in program.vars:
+        env.add_var(v.name, v.type)
+
+    # functions
+    for f in program.functions:
+        param_types = ["*"] * len(f.parameters)  # you can refine later
+        env.add_func(f.name, param_types, f.return_type)
+
+    # events + code
+    for e in program.events:
+        for stmt in e.code:
+            check_stmt(env, stmt)
+
+
+def check_stmt(env, stmt):
+    from parser import Broadcast, CallFunction, CallEvent, MemberCall
+
+    if isinstance(stmt, Broadcast):
+        # messages are untyped, always ok
+        return
+
+    if isinstance(stmt, CallEvent):
+        # events are built-in, no type check here
+        return
+
+    if isinstance(stmt, CallFunction):
+        param_types, ret_type = env.get_func(stmt.name)
+        # basic arity check
+        if len(stmt.args) != len(param_types):
+            print(f"[TypeWarning] Function '{stmt.name}' called with wrong number of args.")
+        # argument type check
+        for i, arg in enumerate(stmt.args):
+            arg_t = expr_type(env, arg)
+            expected = param_types[i] if i < len(param_types) else "*"
+            if not can_assign(expected, arg_t):
+                print(f"[TypeError] Arg {i} to '{stmt.name}' expected {expected}, got {arg_t}.")
+
+    if isinstance(stmt, MemberCall):
+        # for now, assume member calls are valid; you can add a member type table later
+        return
