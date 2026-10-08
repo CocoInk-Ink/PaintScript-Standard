@@ -1,5 +1,12 @@
 {
   "name": "paintscript-compiler",
   "private": true,
-  "type": "module"
+  "type": "module",
+  "devDependencies": {
+    "webpack": "^5.111.1",
+    "webpack-cli": "^7.2.3"
+  },
+  "dependencies": {
+    "uglify-js": "^3.19.3"
+  }
 }
