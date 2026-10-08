@@ -1,5 +1,6 @@
 cd %~dp0
 
-mkdir "dist"
+if not exist "dist" mkdir "dist"
 
-uglifyjs ast_nodes.js compiler.js ir.js linker.js parser.js tokenizer.js typechecker.js -o dist/output.js -c -m
+call npx webpack --config "%CD%\webpack.config.cjs"
+if errorlevel 1 exit /b %errorlevel%
