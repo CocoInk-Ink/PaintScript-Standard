@@ -185,7 +185,7 @@ function GameLoop() {
 		*/
 
 		// Refresh Screen
-		call @Refresh;
+		call @refresh;
 	}
 
 	if (Exit == "win") {
