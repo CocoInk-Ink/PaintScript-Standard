@@ -1,40 +1,12 @@
-const LIBRArY = {
-	get: function(address) {
-		return eval(`this.${address}`);
-	},
-	"System": {
-		"Types": {
-			"Boolean": Boolean,
-			"Message": Message,
-			"Any": Type,
-			"String": String,
-			"ParamTypes": {
-				"MessageEventParam": MessageEventParam
-			}
-		},
-		"Keyboard": {
-			"Keyboard": null,
-			"KeyboardKey": KeyboardKey
-		},
-		"Sprites": {
-			"BaseSpriteProperties": {
-				x: 0,
-				y: 0
-			}
-		}
-	}
-}
-
-const Keys = ["A", "B", "C", "D"];
-
-class InvalidCoercionError extends Error {
+class InvalidCoercionError extends TypeError {
 	constructor(message) {
-		super("Failed! Invalid coercion!: " + message);
+		super(`Failed! Invalid coercion!: ${message}`);
+		this.name = "InvalidCoercionError";
 	}
 }
 
 class Type {
-	constructor(name, value) {
+	constructor(value) {
 		this.value = value;
 	}
 
@@ -45,13 +17,54 @@ class Type {
 
 class EventParam extends Type {
 	constructor(value, name, type) {
-		if (name == null || name == undefined) throw new Error("Name is null!");
-		super (value);
+		if (name == null) throw new TypeError("Event parameter name cannot be null.");
+		super(value);
 		this.name = name;
 		this.type = type;
 	}
+
+	static coercion() {
+		throw new InvalidCoercionError("EventParam cannot be coerced.");
+	}
+}
+
+class Message extends Type {
+	constructor(value) {
+		super(globalThis.String(value));
+	}
+
 	static coercion(value) {
-		throw new InvalidCoercionError("EventParam cannot be coerced!");
+		return globalThis.String(value);
+	}
+}
+
+class KeyboardKey extends Type {
+	constructor(key) {
+		super(key);
+		this.name = key;
+	}
+}
+
+class StringType extends Type {
+	constructor(value) {
+		if (typeof value !== "string") {
+			throw new InvalidCoercionError(`${value} is not a string.`);
+		}
+		super(value);
+	}
+
+	static coercion(value) {
+		return globalThis.String(value);
+	}
+}
+
+class BooleanType extends Type {
+	constructor(value) {
+		super(BooleanType.coercion(value));
+	}
+
+	static coercion(value) {
+		return globalThis.Boolean(value);
 	}
 }
 
@@ -67,49 +80,47 @@ class KeyboardEventParam extends EventParam {
 	}
 }
 
-class Message extends Type {
-	constructor(name) {
-		super(String.coercion(name));
-	}
-	static coercion(value) {
-		return String.coercion(value);
-	}
-}
+const library = {
+	System: {
+		Types: {
+			Boolean: BooleanType,
+			Message,
+			Any: Type,
+			String: StringType,
+			ParamTypes: {
+				MessageEventParam,
+				KeyboardEventParam
+			}
+		},
+		Keyboard: {
+			Keyboard: null,
+			KeyboardKey
+		},
+		Sprites: {
+			BaseSpriteProperties: {
+				x: 0,
+				y: 0,
+				say: function (...args) {
+					console.log(...args);
+				}
+			}
+		}
+	},
 
-class KeyboardKey extends Type {
-	constructor(key) {
-		super(key);
-	}
-}
+	get(address) {
+		if (typeof address !== "string" || address.length === 0) {
+			throw new TypeError("Library address must be a non-empty string.");
+		}
 
-class String extends Type {
-	constructor(value) {
-		if (typeof value != "string") throw new InvalidCoercionError(`${value} is not a string.`);
-		super(value);
+		let value = this;
+		for (const part of address.split(".")) {
+			if (value == null || !Object.hasOwn(value, part)) {
+				throw new Error(`Library address not found: ${address}`);
+			}
+			value = value[part];
+		}
+		return value;
 	}
-	static coercion(value) {
-		return value + "";
-	}
-}
+};
 
-class Boolean extends Type {
-	constructor(value) {
-		super(Boolean.coercion(value));
-	}
-
-	static coercion(value) {
-		// Already a boolean
-		if (value == true) return true;
-		if (value == false) return false;
-
-		// Coercion
-		if (value == null) return false;
-		if (value == 1) return true;
-		if (value == 0) return false;
-		if (value == NaN || value == undefined) return false
-		if (value != null || value != NaN || value != undefined) return true;
-		throw new InvalidCoercionError(`${value} is not a boolean and cannot be coerced.`);
-	}
-}
-
-module.exports = { library: LIBRArY };
+export { library };

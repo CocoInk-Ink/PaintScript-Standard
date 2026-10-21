@@ -1,90 +1,101 @@
+// engine.js
+// The runtime for the PaintScript programming language.
+
+// The runtime is a bridge in between JS and C#.
+// The GUI is written in C#, so we need to make sure that this code is not
+// too independent, but can still run standalone for tests.
+
+/*
+	In PaintScript, each event handler gets it's own thread.
+*/
+
 import { library } from "./Library.js"
 
 let json = {
-    "version": "0.1",
+	"version": "0.1",
 
-    "permissions": {
-        "filesystem": false,
+	"permissions": {
+		"filesystem": false,
 
-        "networking": false
-    },
+		"networking": false
+	},
 
-    "globals": {
-        "variables": {},
+	"globals": {
+		"variables": {},
 
-        "functions": {}
-    },
+		"functions": {}
+	},
 
-    "targets": [
-        {
-            "name": "Sprite 1",
+	"targets": [
+		{
+			"name": "Sprite 1",
 
-            "instance": "Sprite_1",
+			"instance": "Sprite_1",
 
-            "variables": {},
+			"variables": {},
 
-            "functions": {},
+			"functions": {},
 
-            "events": {
-                "Start": [
-                    [
-                        {
-                            "op": "call",
+			"events": {
+				"Start": [
+					[
+						{
+							"op": "call",
 
-                            "fields": {
-                                "name": {
-                                    "kind": "member",
+							"fields": {
+								"name": {
+									"kind": "member",
 
-                                    "args": [
-                                        {
-                                            "kind": "literal",
+									"args": [
+										{
+											"kind": "literal",
 
-                                            "type": "String",
+											"type": "String",
 
-                                            "value": "Sprite_1"
-                                        },
+											"value": "Sprite_1"
+										},
 
-                                        {
-                                            "kind": "literal",
+										{
+											"kind": "literal",
 
-                                            "type": "String",
+											"type": "String",
 
-                                            "value": "say"
-                                        }
-                                    ]
-                                },
+											"value": "say"
+										}
+									]
+								},
 
-                                "args": [
-                                    {
-                                        "kind": "literal",
+								"args": [
+									{
+										"kind": "literal",
 
-                                        "type": "String",
+										"type": "String",
 
-                                        "value": "Hello, World!"
-                                    }
-                                ]
-                            }
-                        },
+										"value": "Hello, World!"
+									}
+								]
+							}
+						},
 
-                        {
-                            "op": "event_call",
+						{
+							"op": "event_call",
 
-                            "fields": {
-                                "name": "refresh",
+							"fields": {
+								"name": "refresh",
 
-                                "args": []
-                            }
-                        }
-                    ]
-                ],
+								"args": []
+							}
+						}
+					]
+				],
 				"Keydown": [
 					[
-						{	op: "comparator", "args": ["WKey", "UpArrowKey", "SpaceKey"] }
+						{ op: "comparator", "args": ["WKey", "UpArrowKey", "SpaceKey"] }
 					]
 				]
-            }
-        }
-    ]
+			}
+		}
+	]
 }
 
 class BaseTarget {
@@ -137,10 +148,10 @@ class Dictionary {
 }
 
 class Thread {
-	constructor() {}
+	constructor() { }
 	static get threads() {
 		const t = [];
-		
+
 		Object.values(targets).forEach(instance => {
 			instance.threads.forEach(i => t.push(i));
 		});
@@ -153,16 +164,42 @@ const threads = new Set([Thread]);
 
 const events = [
 	{ name: "Start", arg: null },
-	{ name: "receive", arg: {parg: "message", type: library.get("System.Message")} },
+	{ name: "receive", arg: { parg: "message", type: library.get("System.Message") } },
 	{ "name": "KeyDown", arg: { parg: "key", type: library.get("System.Keyboard.KeyboardKey") } }
 ];
 
-let targets = {};
+let targets = [];
 const instances = new Set([Instance]);
 
-export function startEvent() {
-	// If a comparator is the first line in a handler, compare with event args.
-	// if the args match, run the event. If no comparator exists, start the event without checking.
+const eventsRunning = {};
+
+let RefreshNeeded = true;
+let NewLogs = [];
+
+export function startEvent(event, arg) {
+	if (event == "refresh") {
+		RefreshNeeded = true;
+		return;
+	}
+
+	// Get event handlers
+	const handlers = [];
+	targets.forEach(t => {
+		Object.entries(t.events).forEach(([key, value]) => {
+			if (key == event) {
+				if (value[0].op == "comparator") {
+					if (value[0].args.includes(arg)) handlers.push(value);
+				} else {
+					handlers.push(value);
+				}
+			}
+		});
+	})
+
+	// Fire events
+	for (let i = 0; i < handlers.length; i++) {
+		eventsRunning[event] = true;
+	}
 }
 
 export function f(_json) {
@@ -179,5 +216,39 @@ export function setup() {
 	})
 }
 
-export function getCurrentState() {}
-export function Tick() {}
+// Used by C#, this is how it knows whats going on inside the program.
+export function getCurrentState() {
+	const state = {
+		targets,
+		RefreshNeeded,
+		NewLogs
+	};
+
+	RefreshNeeded = false;
+	NewLogs = [];
+
+	return state;
+}
+
+// Tick each thread
+export function Tick() { }
+
+// Activate the start event
+export function Start() {
+	startEvent("Start", null);
+}
+
+export function LoadAndStart(_json) {
+	f(_json);
+	setup();
+	Start();
+}
+
+function Standalone() {
+	setup();
+	Start();
+
+	for(;;) {
+		Tick(); // Tick each thread.
+	}
+}
