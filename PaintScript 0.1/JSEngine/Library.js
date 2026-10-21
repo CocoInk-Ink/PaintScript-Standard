@@ -17,7 +17,10 @@ const LIBRArY = {
 			"KeyboardKey": KeyboardKey
 		},
 		"Sprites": {
-			"BaseSpriteProperties": {}
+			"BaseSpriteProperties": {
+				x: 0,
+				y: 0
+			}
 		}
 	}
 }
