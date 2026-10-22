@@ -102,7 +102,7 @@ class BaseTarget {
 	constructor(id) {
 		this.id = id;
 		this.properties = {}
-		this.threads = new Set([Thread]);
+		this.threads = new Set();
 	}
 
 	setProperties(properties) {
@@ -115,13 +115,18 @@ class Sprite extends BaseTarget {
 		super(id);
 		this.setProperties(library.get("System.Sprites.BaseSpriteProperties"));
 	}
+
+	say(message) {
+		NewLogs.push(String(message));
+	}
 }
 
 class Instance {
 	constructor(id, instanceOf) {
-		super(id);
+		this.id = id;
 		this.instanceOf = instanceOf;
-		this.target = new instanceOf();
+		this.target = new instanceOf(id);
+		this.threads = this.target.threads;
 	}
 
 	static createInstance(id, instanceOf) {
@@ -129,7 +134,7 @@ class Instance {
 	};
 
 	static createHiddenInstance(id) {
-		return new this(id, new Base(id));
+		return new this(id, BaseTarget);
 	}
 }
 
@@ -148,28 +153,52 @@ class Dictionary {
 }
 
 class Thread {
-	constructor() { }
+	constructor(target, code) {
+		this.target = target;
+		this.code = code;
+		this.instruction = 0;
+	}
+
+	step() {
+		const statement = this.code[this.instruction++];
+		if (!statement) {
+			this.target.threads.delete(this);
+			return;
+		}
+
+		if (statement.op == "call") {
+			const { name, args = [] } = statement.fields;
+			if (name.kind == "member") {
+				const [targetName, methodName] = name.args.map(argument => argument.value);
+				const target = targets.find(item => item.instance == targetName);
+				if (!target) throw new Error(`Target '${targetName}' was not found.`);
+				const method = target.target[methodName];
+				if (typeof method != "function") {
+					throw new Error(`Method '${methodName}' was not found on target '${targetName}'.`);
+				}
+				method.apply(target.target, args.map(argument => argument.value));
+			}
+		} else if (statement.op == "event_call") {
+			startEvent(statement.fields.name);
+		}
+
+		if (this.instruction >= this.code.length) {
+			this.target.threads.delete(this);
+		}
+	}
+
 	static get threads() {
-		const t = [];
-
-		Object.values(targets).forEach(instance => {
-			instance.threads.forEach(i => t.push(i));
-		});
-
-		return t;
+		return targets.flatMap(target => [...target.threads]);
 	}
 }
 
-const threads = new Set([Thread]);
-
 const events = [
 	{ name: "Start", arg: null },
-	{ name: "receive", arg: { parg: "message", type: library.get("System.Message") } },
+	{ name: "receive", arg: { parg: "message", type: library.get("System.Types.Message") } },
 	{ "name": "KeyDown", arg: { parg: "key", type: library.get("System.Keyboard.KeyboardKey") } }
 ];
 
 let targets = [];
-const instances = new Set([Instance]);
 
 const eventsRunning = {};
 
@@ -183,43 +212,46 @@ export function startEvent(event, arg) {
 	}
 
 	// Get event handlers
-	const handlers = [];
-	targets.forEach(t => {
-		Object.entries(t.events).forEach(([key, value]) => {
-			if (key == event) {
-				if (value[0].op == "comparator") {
-					if (value[0].args.includes(arg)) handlers.push(value);
-				} else {
-					handlers.push(value);
-				}
+	targets.forEach(target => {
+		const handlers = target.events?.[event] ?? [];
+		handlers.forEach(handler => {
+			const code = Array.isArray(handler) ? [...handler] : [];
+			const comparator = code[0];
+			if (comparator?.op == "comparator") {
+				if (!comparator.args.includes(arg)) return;
+				code.shift();
 			}
+			const thread = new Thread(target, code);
+			target.threads.add(thread);
 		});
-	})
-
-	// Fire events
-	for (let i = 0; i < handlers.length; i++) {
-		eventsRunning[event] = true;
-	}
+	});
 }
 
 export function f(_json) {
 	json = _json;
-	targets = json.targets
 }
 
 export function setup() {
-	targets = json.targets;
-	targets.forEach(t => {
-		const inst = new Instance(Date.now().toString(), BaseTarget);
-
-		instances.add(inst);
-	})
+	targets = json.targets.map((definition, index) => {
+		const instance = Instance.createInstance(String(index), Sprite);
+		return {
+			...definition,
+			id: instance.id,
+			target: instance.target,
+			threads: instance.threads
+		};
+	});
 }
 
 // Used by C#, this is how it knows whats going on inside the program.
 export function getCurrentState() {
+	const t = [];
+	targets.forEach(ta => {
+		t.push(ta.name);
+	});
+
 	const state = {
-		targets,
+		targets: t,
 		RefreshNeeded,
 		NewLogs
 	};
@@ -231,7 +263,9 @@ export function getCurrentState() {
 }
 
 // Tick each thread
-export function Tick() { }
+export function Tick() {
+	Thread.threads.forEach(thread => thread.step());
+}
 
 // Activate the start event
 export function Start() {
@@ -248,7 +282,19 @@ function Standalone() {
 	setup();
 	Start();
 
-	for(;;) {
-		Tick(); // Tick each thread.
+	var i = 1;
+
+	function myLoop() {
+		setTimeout(function () {
+			Tick(); // Tick each thread.
+			console.log(getCurrentState());
+			if (true) {
+				myLoop();
+			}
+		}, 1000)
 	}
+
+	myLoop();
 }
+
+Standalone();
