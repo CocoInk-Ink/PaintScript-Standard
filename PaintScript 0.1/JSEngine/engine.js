@@ -297,4 +297,6 @@ function Standalone() {
 	myLoop();
 }
 
-Standalone();
+if (typeof process !== "undefined" && process.release?.name === "node") {
+    Standalone();
+}

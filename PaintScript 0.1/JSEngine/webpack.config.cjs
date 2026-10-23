@@ -7,10 +7,5 @@ module.exports = {
     output: {
         path: path.join(__dirname, "dist"),
         filename: "output.js",
-        library: {
-            name: "Runtime",
-            type: "var",
-            export: "default"
-        }
     }
 };
