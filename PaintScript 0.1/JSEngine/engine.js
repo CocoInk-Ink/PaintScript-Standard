@@ -228,7 +228,7 @@ export function startEvent(event, arg) {
 }
 
 export function f(_json) {
-	json = _json;
+	json = typeof _json === "string" ? JSON.parse(_json) : _json;
 }
 
 export function setup() {
