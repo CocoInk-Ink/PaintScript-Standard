@@ -3,7 +3,7 @@ const path = require("node:path");
 module.exports = {
     mode: "production",
     target: "web",
-    entry: "./jint.js",
+    entry: "./src/jint.js",
     output: {
         path: path.join(__dirname, "dist"),
         filename: "output.js",

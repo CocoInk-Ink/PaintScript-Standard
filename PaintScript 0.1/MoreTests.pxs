@@ -1,0 +1,10 @@
+#PaintScript 0.1
+#Sprite Sprite_1
+
+@Start {
+	var i = 5;
+	var d = 3;
+
+	Broadcast a;
+	BroadcastAndWait b;
+}
