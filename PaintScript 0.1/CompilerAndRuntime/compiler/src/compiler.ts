@@ -29,8 +29,9 @@ function pretokenize(doubleKeys:Array<Array<string>>) {
 				let c = key.charAt(i);
 
 				// If we are in a string, then just move on.
-				if ((c != '"' && c != "'") && inString) {
-					
+				if ((c != '"' && c != "'" && (c != "\\" && key.charAt(i - 1) != "\\")) && inString) {
+					str += c;
+					continue;
 				}
 				
 				switch (c) {
@@ -38,11 +39,18 @@ function pretokenize(doubleKeys:Array<Array<string>>) {
 					// Strings
 					case '"': {
 						if (stringStarter != "'" && !inString && key.charAt(i - 1) != "\\") {
+							// Open string.
+
 							inString = true;
 							stringStarter = '"';
 						} else if (inString && stringStarter == '"' && key.charAt(i - 1) != "\\") {
+							// Close string.
+							
 							stringStarter = "";
 							inString = false;
+
+							strings.push(str);
+							str = "";
 						}
 					} break;
 
@@ -53,12 +61,17 @@ function pretokenize(doubleKeys:Array<Array<string>>) {
 						} else if (inString && stringStarter == "'" && key.charAt(i - 1) != "\\") {
 							stringStarter = "";
 							inString = false;
+
+							strings.push(str);
+							str = "";
 						}
 					} break;
 				}
 			}
 		});
 	});
+
+	return strings;
 }
 
 function tokenize(text:string) { }

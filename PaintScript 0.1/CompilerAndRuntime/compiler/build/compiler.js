@@ -7,15 +7,62 @@ const fs_1 = __importDefault(require("fs"));
 const file = fs_1.default.readFileSync("Test.pxs");
 const CreporsatorOpen = "<--!<--{-";
 const CreporsatorClose = "-}-->!-->";
+function addCrepersator(item) {
+    return `${CreporsatorOpen}${item}${CreporsatorClose}`;
+}
 function parse(text) { }
 // Clean code before tokenization
 function pretokenize(doubleKeys) {
     let inString = false;
+    let stringStarter = "";
     let str = "";
     let strings = [];
     doubleKeys.forEach((lineKeys) => {
-        lineKeys;
+        lineKeys.forEach(key => {
+            for (let i = 0; i < key.length; i++) {
+                let c = key.charAt(i);
+                // If we are in a string, then just move on.
+                if ((c != '"' && c != "'" && (c != "\\" && key.charAt(i - 1) != "\\")) && inString) {
+                    str += c;
+                    continue;
+                }
+                switch (c) {
+                    // Strings
+                    case '"':
+                        {
+                            if (stringStarter != "'" && !inString && key.charAt(i - 1) != "\\") {
+                                // Open string.
+                                inString = true;
+                                stringStarter = '"';
+                            }
+                            else if (inString && stringStarter == '"' && key.charAt(i - 1) != "\\") {
+                                // Close string.
+                                stringStarter = "";
+                                inString = false;
+                                strings.push(str);
+                                str = "";
+                            }
+                        }
+                        break;
+                    case "'":
+                        {
+                            if (stringStarter != '"' && !inString && key.charAt(i - 1) != "\\") {
+                                inString = true;
+                                stringStarter = "'";
+                            }
+                            else if (inString && stringStarter == "'" && key.charAt(i - 1) != "\\") {
+                                stringStarter = "";
+                                inString = false;
+                                strings.push(str);
+                                str = "";
+                            }
+                        }
+                        break;
+                }
+            }
+        });
     });
+    return strings;
 }
 function tokenize(text) { }
 // Splits at space
