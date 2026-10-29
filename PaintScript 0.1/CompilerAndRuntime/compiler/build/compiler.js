@@ -21,17 +21,17 @@ function pretokenize(doubleKeys) {
     doubleKeys.forEach((lineKeys) => {
         lineKeys.forEach(key => {
             for (let i = 0; i < key.length; i++) {
+                // Check if last character was a backslash, if it was, check if it was escaped.
                 function isSafe() {
-                    if (isEscaped)
-                        return false;
-                    else if (key.charAt(i - 1) == "\\")
-                        return str.charAt(str.length - 1) == "\\";
-                    else
-                        return true;
+                    return !isEscaped;
                 }
                 let c = key.charAt(i);
+                if (c == "\\" && isEscaped) {
+                    str += c;
+                    continue;
+                }
                 // If we are in a string, then just move on.
-                if ((c != '"' && c != "'" && (c != "\\" && !isEscaped)) && inString) {
+                if ((c != '"' && c != "'" && (c != "\\" && isSafe())) && inString) {
                     str += c;
                     continue;
                 }
@@ -75,6 +75,7 @@ function pretokenize(doubleKeys) {
                 isEscaped = false;
             }
         });
+        console.log(str);
         if (inString)
             throw new Error("String not ended after newline!");
         // Reset string on newline
@@ -91,32 +92,48 @@ function keyget(text) {
     let keys = [];
     let inString = false;
     let stringStarter = "";
+    let isEscaped = false;
     for (var i = 0; i < text.length; i++) {
+        // Check if last character was a backslash, if it was, check if it was escaped.
+        function isSafe() {
+            return !isEscaped;
+        }
         // Get keyword.
-        while (!((text.charAt(i) == ' ' && ((text.charAt(i) != "\\" && text.charAt(i - 1) != "\\")) && (!inString)) || i >= text.length)) {
-            currentKeyword += text.charAt(i);
-            if (text.charAt(i) == "\\" && text.charAt(i - 1) != "\\") {
+        while (!((text.charAt(i) == ' ' && !inString) || i >= text.length)) {
+            if (text.charAt(i) == "\\" && isSafe()) {
+                isEscaped = true;
+                console.log(currentKeyword, text.charAt(i), i, `isEscaped: ${isEscaped}`, `inString: ${inString}`);
                 i++;
                 continue;
             }
-            if (text.charAt(i) == '\\')
-                if (text.charAt(i - 1) != "\\" && text.charAt(i - 2) != "\\") {
-                    // Check if we are starting or ending a string.
-                    if (text.charAt(i) == "'" || text.charAt(i) == '"') {
-                        if (!inString) {
-                            // Starting
-                            stringStarter = text.charAt(i);
-                            inString = true;
-                        }
-                        else if (stringStarter == text.charAt(i)) {
-                            // Ending
-                            stringStarter = "";
-                            inString = false;
-                        }
+            // Backslash is escaped.
+            if (text.charAt(i) == "\\") {
+                currentKeyword += "\\\\"; // Add two backslashes for pretokenizer.
+                console.log(currentKeyword, text.charAt(i), i, `isEscaped: ${isEscaped}`, `inString: ${inString}`);
+                isEscaped = false;
+                i++;
+                continue;
+            }
+            currentKeyword += text.charAt(i);
+            if (text.charAt(i) == '\\') { }
+            if (isSafe()) {
+                // Check if we are starting or ending a string.
+                if (text.charAt(i) == "'" || text.charAt(i) == '"') {
+                    if (!inString) {
+                        // Starting
+                        stringStarter = text.charAt(i);
+                        inString = true;
+                    }
+                    else if (stringStarter == text.charAt(i)) {
+                        // Ending
+                        stringStarter = "";
+                        inString = false;
                     }
                 }
-            console.log(currentKeyword, text.charAt(i), i);
-            i++; // DO Last!
+            }
+            console.log(currentKeyword, text.charAt(i), i, `isEscaped: ${isEscaped}`, `inString: ${inString}`);
+            isEscaped = false; // Important!
+            i++; // DO Last! Important!
         }
         keys.push(currentKeyword);
         currentKeyword = "";
@@ -131,6 +148,7 @@ function lex(text) {
     // Get keys line by line
     for (let line of text.split("\n"))
         keys.push(keyget(line));
+    console.log(`Keys: ${keys}`);
     return pretokenize(keys);
 }
 // Code:
