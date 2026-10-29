@@ -17,25 +17,37 @@ function pretokenize(doubleKeys) {
     let stringStarter = "";
     let str = "";
     let strings = [];
+    let isEscaped = false;
     doubleKeys.forEach((lineKeys) => {
         lineKeys.forEach(key => {
             for (let i = 0; i < key.length; i++) {
+                function isSafe() {
+                    if (isEscaped)
+                        return false;
+                    else if (key.charAt(i - 1) == "\\")
+                        return str.charAt(str.length - 1) == "\\";
+                    else
+                        return true;
+                }
                 let c = key.charAt(i);
                 // If we are in a string, then just move on.
-                if ((c != '"' && c != "'" && (c != "\\" && (key.charAt(i - 1) != "\\" && key.charAt(i - 2) != "\\"))) && inString) {
+                if ((c != '"' && c != "'" && (c != "\\" && !isEscaped)) && inString) {
                     str += c;
                     continue;
                 }
                 switch (c) {
+                    case "\\":
+                        isEscaped = true;
+                        continue;
                     // Strings
                     case '"':
                         {
-                            if (stringStarter != "'" && !inString && (key.charAt(i - 1) != "\\" && key.charAt(i - 2) != "\\")) {
+                            if (stringStarter != "'" && !inString && isSafe()) {
                                 // Open string.
                                 inString = true;
                                 stringStarter = '"';
                             }
-                            else if (inString && stringStarter == '"' && (key.charAt(i - 1) != "\\" && key.charAt(i - 2) != "\\")) {
+                            else if (inString && stringStarter == '"' && isSafe()) {
                                 // Close string.
                                 stringStarter = "";
                                 inString = false;
@@ -46,11 +58,11 @@ function pretokenize(doubleKeys) {
                         break;
                     case "'":
                         {
-                            if (stringStarter != '"' && !inString && key.charAt(i - 1) != "\\") {
+                            if (stringStarter != '"' && !inString && isSafe()) {
                                 inString = true;
                                 stringStarter = "'";
                             }
-                            else if (inString && stringStarter == "'" && key.charAt(i - 1) != "\\") {
+                            else if (inString && stringStarter == "'" && isSafe()) {
                                 stringStarter = "";
                                 inString = false;
                                 strings.push(str);
@@ -59,6 +71,8 @@ function pretokenize(doubleKeys) {
                         }
                         break;
                 }
+                // After, reset the escape:
+                isEscaped = false;
             }
         });
         if (inString)
@@ -85,21 +99,22 @@ function keyget(text) {
                 i++;
                 continue;
             }
-            if (text.charAt(i - 1) != "\\" && text.charAt(i - 2) != "\\") {
-                // Check if we are starting or ending a string.
-                if (text.charAt(i) == "'" || text.charAt(i) == '"') {
-                    if (!inString) {
-                        // Starting
-                        stringStarter = text.charAt(i);
-                        inString = true;
-                    }
-                    else if (stringStarter == text.charAt(i)) {
-                        // Ending
-                        stringStarter = "";
-                        inString = false;
+            if (text.charAt(i) == '\\')
+                if (text.charAt(i - 1) != "\\" && text.charAt(i - 2) != "\\") {
+                    // Check if we are starting or ending a string.
+                    if (text.charAt(i) == "'" || text.charAt(i) == '"') {
+                        if (!inString) {
+                            // Starting
+                            stringStarter = text.charAt(i);
+                            inString = true;
+                        }
+                        else if (stringStarter == text.charAt(i)) {
+                            // Ending
+                            stringStarter = "";
+                            inString = false;
+                        }
                     }
                 }
-            }
             console.log(currentKeyword, text.charAt(i), i);
             i++; // DO Last!
         }

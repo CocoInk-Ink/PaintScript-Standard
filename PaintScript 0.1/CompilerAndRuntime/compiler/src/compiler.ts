@@ -10,42 +10,53 @@ type Creporsator = "<--!<--{-" | "-}-->!-->";
 type OP = "call" | "event_call" | "member_call" | "comparator" | "expr" |
 	"assign" | "define" | "stopall" | "broadcast" | "broadcastAndWait" | "member_access";
 
-function addCrepersator(item:any) {
+function addCrepersator(item: any) {
 	return `${CreporsatorOpen}${item}${CreporsatorClose}`;
 }
 
-function parse(text:string) { }
+function parse(text: string) { }
 
 // Clean code before tokenization
-function pretokenize(doubleKeys:Array<Array<string>>) {
-	let inString:Boolean = false;
-	let stringStarter:string = "";
-	let str:string = "";
-	let strings:Array<string> = [];
+function pretokenize(doubleKeys: Array<Array<string>>) {
+	let inString: Boolean = false;
+	let stringStarter: string = "";
+	let str: string = "";
+	let strings: Array<string> = [];
+
+	let isEscaped: Boolean = false;
 
 	doubleKeys.forEach((lineKeys) => {
 		lineKeys.forEach(key => {
 			for (let i = 0; i < key.length; i++) {
+				function isSafe() {
+					if (isEscaped) return false;
+					else if (key.charAt(i - 1) == "\\") return str.charAt(str.length - 1) == "\\";
+					else return true;
+				}
+
 				let c = key.charAt(i);
 
 				// If we are in a string, then just move on.
-				if ((c != '"' && c != "'" && (c != "\\" && (key.charAt(i - 1) != "\\" && key.charAt(i - 2) != "\\"))) && inString) {
+				if ((c != '"' && c != "'" && (c != "\\" && !isEscaped)) && inString) {
 					str += c;
 					continue;
 				}
-				
+
 				switch (c) {
+					case "\\":
+						isEscaped = true;
+						continue;
 
 					// Strings
 					case '"': {
-						if (stringStarter != "'" && !inString && (key.charAt(i - 1) != "\\" && key.charAt(i - 2) != "\\")) {
+						if (stringStarter != "'" && !inString && isSafe()) {
 							// Open string.
 
 							inString = true;
 							stringStarter = '"';
-						} else if (inString && stringStarter == '"' && (key.charAt(i - 1) != "\\" && key.charAt(i - 2) != "\\")) {
+						} else if (inString && stringStarter == '"' && isSafe()) {
 							// Close string.
-							
+
 							stringStarter = "";
 							inString = false;
 
@@ -55,10 +66,10 @@ function pretokenize(doubleKeys:Array<Array<string>>) {
 					} break;
 
 					case "'": {
-						if (stringStarter != '"' && !inString && key.charAt(i - 1) != "\\") {
+						if (stringStarter != '"' && !inString && isSafe()) {
 							inString = true;
 							stringStarter = "'";
-						} else if (inString && stringStarter == "'" && key.charAt(i - 1) != "\\") {
+						} else if (inString && stringStarter == "'" && isSafe()) {
 							stringStarter = "";
 							inString = false;
 
@@ -67,6 +78,9 @@ function pretokenize(doubleKeys:Array<Array<string>>) {
 						}
 					} break;
 				}
+
+				// After, reset the escape:
+				isEscaped = false;
 			}
 		});
 
@@ -81,15 +95,15 @@ function pretokenize(doubleKeys:Array<Array<string>>) {
 	return strings;
 }
 
-function tokenize(text:string) { }
+function tokenize(text: string) { }
 
 // Splits at space
-function keyget(text:string) {
-	let currentKeyword:string = "";
+function keyget(text: string) {
+	let currentKeyword: string = "";
 	let keys: Array<string> = [];
 
-	let inString:Boolean = false;
-	let stringStarter:string = "";
+	let inString: Boolean = false;
+	let stringStarter: string = "";
 
 	for (var i = 0; i < text.length; i++) {
 		// Get keyword.
@@ -97,23 +111,24 @@ function keyget(text:string) {
 			currentKeyword += text.charAt(i);
 
 			if (text.charAt(i) == "\\" && text.charAt(i - 1) != "\\") { i++; continue; }
-			if (text.charAt(i - 1) != "\\" && text.charAt(i - 2) != "\\") {
+			if (text.charAt(i) == '\\')
+				if (text.charAt(i - 1) != "\\" && text.charAt(i - 2) != "\\") {
 
-				// Check if we are starting or ending a string.
-				if (text.charAt(i) == "'" || text.charAt(i) == '"') {
-					if (!inString) {
-						// Starting
-						stringStarter = text.charAt(i);
-						inString = true;
-					} else if (stringStarter == text.charAt(i)) {
-						// Ending
-						stringStarter = "";
-						inString = false;
+					// Check if we are starting or ending a string.
+					if (text.charAt(i) == "'" || text.charAt(i) == '"') {
+						if (!inString) {
+							// Starting
+							stringStarter = text.charAt(i);
+							inString = true;
+						} else if (stringStarter == text.charAt(i)) {
+							// Ending
+							stringStarter = "";
+							inString = false;
+						}
 					}
+
+
 				}
-
-
-			}
 
 			console.log(currentKeyword, text.charAt(i), i);
 			i++; // DO Last!
@@ -127,10 +142,10 @@ function keyget(text:string) {
 }
 
 // Return pretokenized keys
-function lex(text:string) {
+function lex(text: string) {
 	if (text.includes(CreporsatorOpen) || text.includes(CreporsatorClose)) throw new Error("File is not allowed to contain an creporsator!");
 
-	let keys:Array<Array<string>> = [];
+	let keys: Array<Array<string>> = [];
 
 	// Get keys line by line
 	for (let line of text.split("\n"))
