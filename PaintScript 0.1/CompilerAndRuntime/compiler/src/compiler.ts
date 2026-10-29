@@ -29,7 +29,7 @@ function pretokenize(doubleKeys:Array<Array<string>>) {
 				let c = key.charAt(i);
 
 				// If we are in a string, then just move on.
-				if ((c != '"' && c != "'" && (c != "\\" && key.charAt(i - 1) != "\\")) && inString) {
+				if ((c != '"' && c != "'" && (c != "\\" && (key.charAt(i - 1) != "\\" && key.charAt(i - 2) != "\\"))) && inString) {
 					str += c;
 					continue;
 				}
@@ -38,12 +38,12 @@ function pretokenize(doubleKeys:Array<Array<string>>) {
 
 					// Strings
 					case '"': {
-						if (stringStarter != "'" && !inString && key.charAt(i - 1) != "\\") {
+						if (stringStarter != "'" && !inString && (key.charAt(i - 1) != "\\" && key.charAt(i - 2) != "\\")) {
 							// Open string.
 
 							inString = true;
 							stringStarter = '"';
-						} else if (inString && stringStarter == '"' && key.charAt(i - 1) != "\\") {
+						} else if (inString && stringStarter == '"' && (key.charAt(i - 1) != "\\" && key.charAt(i - 2) != "\\")) {
 							// Close string.
 							
 							stringStarter = "";
@@ -69,6 +69,13 @@ function pretokenize(doubleKeys:Array<Array<string>>) {
 				}
 			}
 		});
+
+		if (inString) throw new Error("String not ended after newline!");
+
+		// Reset string on newline
+		inString = false;
+		stringStarter = "";
+		str = "";
 	});
 
 	return strings;
@@ -81,13 +88,35 @@ function keyget(text:string) {
 	let currentKeyword:string = "";
 	let keys: Array<string> = [];
 
+	let inString:Boolean = false;
+	let stringStarter:string = "";
+
 	for (var i = 0; i < text.length; i++) {
-		// Get word.
-		while (!(text.charAt(i) == ' ' || i >= text.length)) {
+		// Get keyword.
+		while (!((text.charAt(i) == ' ' && ((text.charAt(i) != "\\" && text.charAt(i - 1) != "\\")) && (!inString)) || i >= text.length)) {
 			currentKeyword += text.charAt(i);
-			i++;
+
+			if (text.charAt(i) == "\\" && text.charAt(i - 1) != "\\") { i++; continue; }
+			if (text.charAt(i - 1) != "\\" && text.charAt(i - 2) != "\\") {
+
+				// Check if we are starting or ending a string.
+				if (text.charAt(i) == "'" || text.charAt(i) == '"') {
+					if (!inString) {
+						// Starting
+						stringStarter = text.charAt(i);
+						inString = true;
+					} else if (stringStarter == text.charAt(i)) {
+						// Ending
+						stringStarter = "";
+						inString = false;
+					}
+				}
+
+
+			}
 
 			console.log(currentKeyword, text.charAt(i), i);
+			i++; // DO Last!
 		}
 
 		keys.push(currentKeyword);
