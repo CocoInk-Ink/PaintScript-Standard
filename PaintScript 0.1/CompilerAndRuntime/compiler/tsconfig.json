@@ -1,0 +1,14 @@
+{
+  "ts-node": {
+    "compiler": "typescript",
+    "emit": true
+  },
+  "compilerOptions": {
+    "rootDir": "src",
+    "module": "node20",
+    "target": "es2015",
+    "outDir": "build",
+    "types": ["node"]
+  },
+  "include": ["src/**/*"],
+}
