@@ -47,6 +47,12 @@ function isWhitespace(c: string): boolean {
 		c === "\r";
 }
 
+function makeToken<T extends Token>(
+    token: T
+): T {
+    return token;
+}
+
 function lex(source: string): Token[] {
 	const tokens: Token[] = [];
 
