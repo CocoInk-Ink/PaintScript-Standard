@@ -1,155 +1,315 @@
 "use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
+// compiler.ts
 Object.defineProperty(exports, "__esModule", { value: true });
-const fs_1 = __importDefault(require("fs"));
-const file = fs_1.default.readFileSync("Test.pxs");
-const CreporsatorOpen = "<--!<--{-";
-const CreporsatorClose = "-}-->!-->";
-function addCrepersator(item) {
-    return `${CreporsatorOpen}${item}${CreporsatorClose}`;
+function isDigit(c) {
+    return c >= "0" && c <= "9";
 }
-function parse(text) { }
-// Clean code before tokenization
-function pretokenize(doubleKeys) {
-    let inString = false;
-    let stringStarter = "";
-    let str = "";
-    let strings = [];
-    let isEscaped = false;
-    doubleKeys.forEach((lineKeys) => {
-        lineKeys.forEach(key => {
-            for (let i = 0; i < key.length; i++) {
-                // Check if last character was a backslash, if it was, check if it was escaped.
-                function isSafe() {
-                    return !isEscaped;
-                }
-                let c = key.charAt(i);
-                if (c == "\\" && isEscaped) {
-                    str += c;
+function isAlpha(c) {
+    return ((c >= "a" && c <= "z") ||
+        (c >= "A" && c <= "Z") ||
+        c === "_");
+}
+function isWhitespace(c) {
+    return c === " " ||
+        c === "\t" ||
+        c === "\n" ||
+        c === "\r";
+}
+function lex(source) {
+    const tokens = [];
+    let i = 0;
+    let line = 1;
+    let column = 1;
+    while (i < source.length) {
+        const c = source[i];
+        // Skip whitespace
+        if (c === "\n") {
+            line++;
+            column = 1;
+            i++;
+            continue;
+        }
+        if (c === " " || c === "\t" || c === "\r") {
+            i++;
+            column++;
+            continue;
+        }
+        // Event names
+        if (c === "@") {
+            const startLine = line;
+            const startColumn = column;
+            const startPosition = i;
+            i++;
+            column++;
+            let name = "";
+            while (i < source.length &&
+                (isAlpha(source[i]) || isDigit(source[i]))) {
+                name += source[i];
+                i++;
+                column++;
+            }
+            tokens.push({
+                type: "EVENT",
+                value: name,
+                line: startLine,
+                column: startColumn,
+                position: startPosition
+            });
+            continue;
+        }
+        // Strings
+        if (c === '"' || c === "'") {
+            const startLine = line;
+            const startColumn = column;
+            const startPosition = i;
+            const quote = c;
+            i++;
+            column++;
+            let value = "";
+            while (i < source.length) {
+                const current = source[i];
+                if (current === "\\") {
+                    i++;
+                    column++;
+                    if (i >= source.length)
+                        throw new Error(`Invalid escape sequence at line ${line}, column ${column}`);
+                    value += source[i];
+                    i++;
+                    column++;
                     continue;
                 }
-                // If we are in a string, then just move on.
-                if ((c != '"' && c != "'" && (c != "\\" && isSafe())) && inString) {
-                    str += c;
-                    continue;
+                if (current === quote) {
+                    i++;
+                    column++;
+                    break;
                 }
-                switch (c) {
-                    case "\\":
-                        isEscaped = true;
-                        continue;
-                    // Strings
-                    case '"':
-                        {
-                            if (stringStarter != "'" && !inString && isSafe()) {
-                                // Open string.
-                                inString = true;
-                                stringStarter = '"';
-                            }
-                            else if (inString && stringStarter == '"' && isSafe()) {
-                                // Close string.
-                                stringStarter = "";
-                                inString = false;
-                                strings.push(str);
-                                str = "";
-                            }
-                        }
-                        break;
-                    case "'":
-                        {
-                            if (stringStarter != '"' && !inString && isSafe()) {
-                                inString = true;
-                                stringStarter = "'";
-                            }
-                            else if (inString && stringStarter == "'" && isSafe()) {
-                                stringStarter = "";
-                                inString = false;
-                                strings.push(str);
-                                str = "";
-                            }
-                        }
-                        break;
+                if (current === "\n") {
+                    line++;
+                    column = 1;
                 }
-                // After, reset the escape:
-                isEscaped = false;
-            }
-        });
-        console.log(str);
-        if (inString)
-            throw new Error("String not ended after newline!");
-        // Reset string on newline
-        inString = false;
-        stringStarter = "";
-        str = "";
-    });
-    return strings;
-}
-function tokenize(text) { }
-// Splits at space
-function keyget(text) {
-    let currentKeyword = "";
-    let keys = [];
-    let inString = false;
-    let stringStarter = "";
-    let isEscaped = false;
-    for (var i = 0; i < text.length; i++) {
-        // Check if last character was a backslash, if it was, check if it was escaped.
-        function isSafe() {
-            return !isEscaped;
-        }
-        // Get keyword.
-        while (!((text.charAt(i) == ' ' && !inString) || i >= text.length)) {
-            if (text.charAt(i) == "\\" && isSafe()) {
-                isEscaped = true;
-                console.log(currentKeyword, text.charAt(i), i, `isEscaped: ${isEscaped}`, `inString: ${inString}`);
+                else {
+                    column++;
+                }
+                value += current;
                 i++;
-                continue;
             }
-            // Backslash is escaped.
-            if (text.charAt(i) == "\\") {
-                currentKeyword += "\\\\"; // Add two backslashes for pretokenizer.
-                console.log(currentKeyword, text.charAt(i), i, `isEscaped: ${isEscaped}`, `inString: ${inString}`);
-                isEscaped = false;
-                i++;
-                continue;
-            }
-            currentKeyword += text.charAt(i);
-            if (text.charAt(i) == '\\') { }
-            if (isSafe()) {
-                // Check if we are starting or ending a string.
-                if (text.charAt(i) == "'" || text.charAt(i) == '"') {
-                    if (!inString) {
-                        // Starting
-                        stringStarter = text.charAt(i);
-                        inString = true;
-                    }
-                    else if (stringStarter == text.charAt(i)) {
-                        // Ending
-                        stringStarter = "";
-                        inString = false;
-                    }
-                }
-            }
-            console.log(currentKeyword, text.charAt(i), i, `isEscaped: ${isEscaped}`, `inString: ${inString}`);
-            isEscaped = false; // Important!
-            i++; // DO Last! Important!
+            tokens.push({
+                type: "STRING",
+                value,
+                line: startLine,
+                column: startColumn,
+                position: startPosition
+            });
+            continue;
         }
-        keys.push(currentKeyword);
-        currentKeyword = "";
+        // Numbers
+        if (isDigit(c)) {
+            const startLine = line;
+            const startColumn = column;
+            const startPosition = i;
+            let value = "";
+            while (i < source.length &&
+                (isDigit(source[i]) || source[i] === ".")) {
+                value += source[i];
+                i++;
+                column++;
+            }
+            tokens.push({
+                type: "NUMBER",
+                value: parseFloat(value),
+                line: startLine,
+                column: startColumn,
+                position: startPosition
+            });
+            continue;
+        }
+        // Identifiers
+        if (isAlpha(c)) {
+            const startLine = line;
+            const startColumn = column;
+            const startPosition = i;
+            let value = "";
+            while (i < source.length &&
+                (isAlpha(source[i]) || isDigit(source[i]))) {
+                value += source[i];
+                i++;
+                column++;
+            }
+            // Parse keywords
+            switch (value) {
+                case "var":
+                    tokens.push({
+                        type: "VAR",
+                        line: startLine,
+                        column: startColumn,
+                        position: startPosition
+                    });
+                    break;
+                case "function":
+                    tokens.push({
+                        type: "FUNCTION",
+                        line: startLine,
+                        column: startColumn,
+                        position: startPosition
+                    });
+                    break;
+                case "return":
+                    tokens.push({
+                        type: "RETURN",
+                        line: startLine,
+                        column: startColumn,
+                        position: startPosition
+                    });
+                    break;
+                case "strict":
+                    tokens.push({
+                        type: "STRICT",
+                        line: startLine,
+                        column: startColumn,
+                        position: startPosition
+                    });
+                    break;
+                default:
+                    tokens.push({
+                        type: "IDENT",
+                        value,
+                        line: startLine,
+                        column: startColumn,
+                        position: startPosition
+                    });
+            }
+            continue;
+        }
+        // Single-character symbols
+        switch (c) {
+            case "(":
+                tokens.push({
+                    type: "LPAREN",
+                    value: "(",
+                    line,
+                    column,
+                    position: i
+                });
+                break;
+            case ")":
+                tokens.push({
+                    type: "RPAREN",
+                    value: ")",
+                    line,
+                    column,
+                    position: i
+                });
+                break;
+            case "{":
+                tokens.push({
+                    type: "LBRACE",
+                    value: "{",
+                    line,
+                    column,
+                    position: i
+                });
+                break;
+            case "}":
+                tokens.push({
+                    type: "RBRACE",
+                    value: "}",
+                    line,
+                    column,
+                    position: i
+                });
+                break;
+            case ";":
+                tokens.push({
+                    type: "SEMICOLON",
+                    value: ";",
+                    line,
+                    column,
+                    position: i
+                });
+                break;
+            case ",":
+                tokens.push({
+                    type: "COMMA",
+                    value: ",",
+                    line,
+                    column,
+                    position: i
+                });
+                break;
+            case "=":
+                tokens.push({
+                    type: "ASSIGN",
+                    value: "=",
+                    line,
+                    column,
+                    position: i
+                });
+                break;
+            case "+":
+                tokens.push({
+                    type: "ADD",
+                    value: "+",
+                    line,
+                    column,
+                    position: i
+                });
+                break;
+            case "-":
+                tokens.push({
+                    type: "SUB",
+                    value: "-",
+                    line,
+                    column,
+                    position: i
+                });
+                break;
+            case "*":
+                tokens.push({
+                    type: "MUL",
+                    value: "*",
+                    line,
+                    column,
+                    position: i
+                });
+                break;
+            case "/":
+                tokens.push({
+                    type: "DIV",
+                    value: "/",
+                    line,
+                    column,
+                    position: i
+                });
+                break;
+            default:
+                throw new Error(`Unexpected character '${c}' at line ${line}, column ${column}`);
+        }
+        i++;
+        column++;
     }
-    return keys;
+    tokens.push({
+        type: "EOF",
+        line,
+        column,
+        position: i
+    });
+    return tokens;
 }
-// Return pretokenized keys
-function lex(text) {
-    if (text.includes(CreporsatorOpen) || text.includes(CreporsatorClose))
-        throw new Error("File is not allowed to contain an creporsator!");
-    let keys = [];
-    // Get keys line by line
-    for (let line of text.split("\n"))
-        keys.push(keyget(line));
-    console.log(`Keys: ${keys}`);
-    return pretokenize(keys);
+const code = `
+@Start {
+    say("Hello, World!");
+	var hello = "Hello!";
+
+	say(hello);
+	var var1 = 3;
+	var var2 = 7;
+
+	var sum = add(var1, var2);
+	say(sum);
 }
-// Code:
-console.log(lex(file.toString()));
+
+strict function add(num1, num2) {
+	return num1 + num2;
+}
+`;
+console.log(lex(code));

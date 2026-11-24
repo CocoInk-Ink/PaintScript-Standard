@@ -1,10 +1,19 @@
-cd %~dp0
+@echo off
 
-cd "PaintScript 0.1"
-cd "compiler"
+cd /d "%~dp0"
 
-rmdir /s /q sessions
+cd "PaintScript 0.1\CompilerAndRuntime\compiler"
 
-node compiler.js "Sprite 1" "Sprite_1" ..\Sample.pxs --session abc123
+if exist sessions rmdir /s /q sessions
 
-node compiler.js "Sprite 1" "Player" ..\Game.pxs --session abc123
+call tsc
+
+cd build
+
+node compiler.js
+
+pause
+
+:: node compiler.js "Sprite 1" "Sprite_1" ..\Sample.pxs --session abc123
+
+:: node compiler.js "Sprite 1" "Player" ..\Game.pxs --session abc123
