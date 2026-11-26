@@ -6,6 +6,8 @@ cd "PaintScript 0.1\CompilerAndRuntime\compiler"
 
 if exist sessions rmdir /s /q sessions
 
+if exist build rmdir /s /q build
+
 call tsc
 
 cd build
