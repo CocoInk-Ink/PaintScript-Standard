@@ -1,10 +1,10 @@
-// compiler.ts
+// lexer.ts
 // Compile to a json ir that gets linked then interpreted by a vm
 // This file compiles a single file at a time.
 
 // @ts-ignore
 
-import Token from "./tokens.js";
+import type { Token } from "./tokens.js";
 
 function isDigit(c: string): boolean {
 	return c >= "0" && c <= "9";

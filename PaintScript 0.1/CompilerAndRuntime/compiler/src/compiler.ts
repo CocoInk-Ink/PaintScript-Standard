@@ -1,3 +1,5 @@
+// compiler.ts
+
 import { lex } from "./lexer";
 import { parse } from "./parser";
 
@@ -25,7 +27,10 @@ public strict function add(num1, num2) {
 `;
 
 try {
-	console.log(parse(lex(code)));
+	const tokens = lex(code);
+	console.log(tokens);
+
+	const program = parse(tokens);
 } catch (error) {
 	console.log(error);
 }
