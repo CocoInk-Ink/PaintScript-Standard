@@ -31,6 +31,14 @@ try {
 	console.log(tokens);
 
 	const program = parse(tokens);
+
+	console.log(
+		JSON.stringify(
+			program,
+			null,
+			4
+		)
+	);
 } catch (error) {
 	console.log(error);
 }
