@@ -316,6 +316,16 @@ export function parse(tokens: Token[]): ProgramNode {
 					value: token.value
 				};
 
+			case "LPAREN":
+				expect("LPAREN");
+
+				const expression =
+					parseExpression();
+
+				expect("RPAREN");
+
+				return expression;
+
 			case "IDENT": {
 
 				advance();
