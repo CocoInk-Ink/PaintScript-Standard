@@ -2,11 +2,9 @@
 
 import type { Token } from "./tokens.js";
 import {
-	ProgramNode, StatementNode, VariableDeclarationNode,
-	ExpressionNode, NumberLiteralNode, StringLiteralNode,
-	IdentifierNode, FunctionDeclarationNode,
-	DeclarationNode,
-	EventDeclarationNode, ReturnStatementNode
+	ProgramNode, StatementNode, VariableDeclarationNode, ExpressionNode, NumberLiteralNode,
+	StringLiteralNode, IdentifierNode, FunctionDeclarationNode, DeclarationNode, EventDeclarationNode,
+	ReturnStatementNode, ExpressionStatementNode, CallExpressionNode, EventCallExpressionNode
 } from "./ast.js";
 
 export function parse(tokens: Token[]): ProgramNode {
@@ -94,7 +92,11 @@ export function parse(tokens: Token[]): ProgramNode {
 		const modifiers: string[] = [];
 
 		while (current().type === "MODIFIER") {
-			modifiers.push(current().value);
+			const modifier =
+				current() as Extract<Token, { type: "MODIFIER" }>;
+
+			modifiers.push(modifier.value);
+
 			advance();
 		}
 
@@ -115,12 +117,29 @@ export function parse(tokens: Token[]): ProgramNode {
 			return parseReturn();
 		}
 
-		// later:
-		// return parseExpressionStatement();
+		if (
+			current().type === "IDENT" ||
+			current().type === "STRING" ||
+			current().type === "NUMBER"
+		) {
+			return parseExpressionStatement();
+		}
 
 		throw new Error(
 			`Unexpected token ${current().type} at line ${current().line}, column ${current().column}`
 		);
+	}
+
+	function parseExpressionStatement(): ExpressionStatementNode {
+
+		const expression = parseExpression();
+
+		expect("SEMICOLON");
+
+		return {
+			type: "ExpressionStatement",
+			expression
+		};
 	}
 
 	function parseEvent(): EventDeclarationNode {
@@ -208,6 +227,74 @@ export function parse(tokens: Token[]): ProgramNode {
 	}
 
 	function parseExpression(): ExpressionNode {
+		return parseAddition();
+	}
+
+	function parseAddition(): ExpressionNode {
+
+		let left = parseMultiplication();
+
+		while (
+			current().type === "ADD" ||
+			current().type === "SUB"
+		) {
+
+			const operatorToken =
+				current() as Extract<
+					Token,
+					{ type: "ADD" } | { type: "SUB" }
+				>;
+
+			const operator = operatorToken.value;
+
+			advance();
+
+			const right = parseMultiplication();
+
+			left = {
+				type: "BinaryExpression",
+				operator,
+				left,
+				right
+			};
+		}
+
+		return left;
+	}
+
+	function parseMultiplication(): ExpressionNode {
+
+		let left = parsePrimary();
+
+		while (
+			current().type === "MUL" ||
+			current().type === "DIV"
+		) {
+
+			const operatorToken =
+				current() as Extract<
+					Token,
+					{ type: "MUL" } | { type: "DIV" }
+				>;
+
+			const operator = operatorToken.value;
+
+			advance();
+
+			const right = parsePrimary();
+
+			left = {
+				type: "BinaryExpression",
+				operator,
+				left,
+				right
+			};
+		}
+
+		return left;
+	}
+
+	function parsePrimary(): ExpressionNode {
 
 		const token = current();
 
@@ -232,6 +319,20 @@ export function parse(tokens: Token[]): ProgramNode {
 			case "IDENT": {
 
 				advance();
+
+				if (
+					token.type === "IDENT" &&
+					token.value === "call"
+				) {
+
+					const event =
+						expect("EVENT");
+
+					return {
+						type: "EventCallExpression",
+						name: event.value
+					};
+				}
 
 				if (current().type === "LPAREN") {
 

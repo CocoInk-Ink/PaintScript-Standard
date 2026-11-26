@@ -59,12 +59,18 @@ export type ExpressionNode =
 	| StringLiteralNode
 	| IdentifierNode
 	| CallExpressionNode
-	| BinaryExpressionNode;
+	| BinaryExpressionNode
+	| EventCallExpressionNode;
 
 export type CallExpressionNode = {
 	type: "CallExpression";
 	name: string;
 	args: ExpressionNode[];
+};
+
+export type EventCallExpressionNode = {
+    type: "EventCallExpression";
+    name: string;
 };
 
 export type BinaryExpressionNode = {
