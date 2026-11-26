@@ -1,20 +1,56 @@
 #PaintScript 0.1
 #Sprite Sprite_1
 
+global var name = "Nino";
+global var f = function() {};
+global function func():void {}
+private var var1:Number = 4;
+private var var2;
+public const a = 5;
+
+@Keyup(key:KeyboardKey) {}
+@Keydown(key:KeyboardKey) {}
+
+// Any key up or down
+@Keydown {}
+@Keyup {}
+
 @Start {
-    say("Hello, World!"); // Same as this.say or Sprite_1.say
-	var hello = "Hello!";
+	var1 = 7;
 
-	say(hello);
-	var var1 = 3;
-	var var2 = 7;
+	if (condition) {}
+	if (condition) then {}
+	else {}
 
-	var sum = add(var1, var2);
-	say(sum);
+	if () {} else then {}
+	if () then {} else then {}
 
-	call @refresh;
+	if () ;
+	if () then ;
+
+	if () ;
+	else ;
+
+	if () then ;
+	else ;
+
+	if () then ;
+	else then ;
+
+	repeat(300) {}
+
+	// Backwards while loop
+	repeat until() {}
+
+	forever {}
+
+	Broadcast message1;
+	BroadcastAndWait message1;
 }
 
-public strict function add(num1, num2) {
-	return num1 + num2;
-}
+// Messages are not declared, only handled, meaning you could have as many handlers as you want for the same message
+
+@receive message1 {}
+
+// Activates on either message
+@receive message1, message2 {}
