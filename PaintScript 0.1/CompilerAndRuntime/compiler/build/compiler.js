@@ -1,5 +1,7 @@
 "use strict";
 // compiler.ts
+// Compile to a json ir that gets linked then interpreted by a vm
+// This file compiles a single file at a time.
 Object.defineProperty(exports, "__esModule", { value: true });
 function isDigit(c) {
     return c >= "0" && c <= "9";
@@ -15,11 +17,18 @@ function isWhitespace(c) {
         c === "\n" ||
         c === "\r";
 }
+function isNewline(c) {
+    return c === "\n";
+}
+function makeToken(token) {
+    return token;
+}
 function lex(source) {
     const tokens = [];
     let i = 0;
     let line = 1;
     let column = 1;
+    let terminated = false;
     while (i < source.length) {
         const c = source[i];
         // Skip whitespace
@@ -32,6 +41,64 @@ function lex(source) {
         if (c === " " || c === "\t" || c === "\r") {
             i++;
             column++;
+            continue;
+        }
+        // Single line comments
+        if (c === "/" &&
+            source[i + 1] === "/") {
+            while (i < source.length &&
+                source[i] !== "\n") {
+                i++;
+                column++;
+            }
+            continue;
+        }
+        // PaintScript options like version and current sprite.
+        if (c === "#") {
+            const startLine = line;
+            const startColumn = column;
+            const startPosition = i;
+            i++;
+            column++;
+            // Key
+            let value = "";
+            while (i < source.length &&
+                !isWhitespace(source[i])) {
+                value += source[i];
+                i++;
+                column++;
+            }
+            tokens.push({
+                type: "OPTION",
+                value,
+                line: startLine,
+                column: startColumn,
+                position: startPosition
+            });
+            // Value
+            value = "";
+            // Skip empty space
+            while (i < source.length &&
+                (source[i] === " " || source[i] === "\t")) {
+                i++;
+                column++;
+            }
+            const startLine2 = line;
+            const startColumn2 = column;
+            const startPosition2 = i;
+            while (i < source.length &&
+                !isNewline(source[i])) {
+                value += source[i];
+                i++;
+                column++;
+            }
+            tokens.push({
+                type: "IDENT",
+                value,
+                line: startLine2,
+                column: startColumn2,
+                position: startPosition2
+            });
             continue;
         }
         // Event names
@@ -169,6 +236,15 @@ function lex(source) {
                         position: startPosition
                     });
                     break;
+                case "class":
+                    tokens.push({
+                        type: "CLASSDEF",
+                        line: startLine,
+                        column: startColumn,
+                        position: startPosition
+                    });
+                    break;
+                // Identifier
                 default:
                     tokens.push({
                         type: "IDENT",
@@ -213,6 +289,15 @@ function lex(source) {
                 tokens.push({
                     type: "RBRACE",
                     value: "}",
+                    line,
+                    column,
+                    position: i
+                });
+                break;
+            case ":":
+                tokens.push({
+                    type: "COLON",
+                    value: ":",
                     line,
                     column,
                     position: i
@@ -296,8 +381,11 @@ function lex(source) {
     return tokens;
 }
 const code = `
+#PaintScript 0.1
+#Sprite Sprite_1
+
 @Start {
-    say("Hello, World!");
+    say("Hello, World!"); // Same as this.say or Sprite_1.say
 	var hello = "Hello!";
 
 	say(hello);

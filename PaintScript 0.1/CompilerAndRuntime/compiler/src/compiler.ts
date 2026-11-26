@@ -1,4 +1,8 @@
 // compiler.ts
+// Compile to a json ir that gets linked then interpreted by a vm
+// This file compiles a single file at a time.
+
+// @ts-ignore
 
 type TokenLocation = {
 	line: number;
@@ -15,6 +19,7 @@ type Token =
 	| ({ type: "RPAREN"; value: ")" } & TokenLocation)
 	| ({ type: "LBRACE"; value: "{" } & TokenLocation)
 	| ({ type: "RBRACE"; value: "}" } & TokenLocation)
+	| ({ type: "COLON"; value: ":" } & TokenLocation)
 	| ({ type: "SEMICOLON"; value: ";" } & TokenLocation)
 	| ({ type: "COMMA"; value: "," } & TokenLocation)
 	| ({ type: "ASSIGN"; value: "=" } & TokenLocation)
@@ -22,10 +27,20 @@ type Token =
 	| ({ type: "SUB"; value: "-" } & TokenLocation)
 	| ({ type: "MUL"; value: "*" } & TokenLocation)
 	| ({ type: "DIV"; value: "/" } & TokenLocation)
+	| ({ type: "OPTION"; value: string } & TokenLocation)
+	| ({ type: "MODIFIER"; value: string } & TokenLocation)
 	| ({ type: "VAR" } & TokenLocation)
 	| ({ type: "FUNCTION" } & TokenLocation)
 	| ({ type: "RETURN" } & TokenLocation)
 	| ({ type: "STRICT" } & TokenLocation)
+	| ({ type: "CLASSDEF" } & TokenLocation)
+	| ({ type: "REPEAT" } & TokenLocation)
+	| ({ type: "WHILE" } & TokenLocation)
+	| ({ type: "FOR" } & TokenLocation)
+	| ({ type: "FOREVER" } & TokenLocation)
+	| ({ type: "IN" } & TokenLocation)
+	| ({ type: "THEN" } & TokenLocation)
+	| ({ type: "UNTIL" } & TokenLocation)
 	| ({ type: "EOF" } & TokenLocation);
 
 function isDigit(c: string): boolean {
@@ -47,10 +62,14 @@ function isWhitespace(c: string): boolean {
 		c === "\r";
 }
 
+function isNewline(c: string): boolean {
+	return c === "\n";
+}
+
 function makeToken<T extends Token>(
-    token: T
+	token: T
 ): T {
-    return token;
+	return token;
 }
 
 function lex(source: string): Token[] {
@@ -59,6 +78,8 @@ function lex(source: string): Token[] {
 	let i = 0;
 	let line = 1;
 	let column = 1;
+
+	let terminated = true;
 
 	while (i < source.length) {
 		const c = source[i];
@@ -74,6 +95,88 @@ function lex(source: string): Token[] {
 		if (c === " " || c === "\t" || c === "\r") {
 			i++;
 			column++;
+			continue;
+		}
+
+		// Single line comments
+		if (
+			c === "/" &&
+			source[i + 1] === "/"
+		) {
+			while (
+				i < source.length &&
+				source[i] !== "\n"
+			) {
+				i++;
+				column++;
+			}
+
+			continue;
+		}
+
+		// PaintScript options like version and current sprite.
+		if (c === "#") {
+			const startLine = line;
+			const startColumn = column;
+			const startPosition = i;
+
+			i++;
+			column++;
+
+			// Key
+
+			let value = "";
+
+			while (
+				i < source.length &&
+				!isWhitespace(source[i])
+			) {
+				value += source[i];
+				i++;
+				column++;
+			}
+
+			tokens.push({
+				type: "OPTION",
+				value,
+				line: startLine,
+				column: startColumn,
+				position: startPosition
+			});
+
+			// Value
+
+			value = "";
+
+			// Skip empty space
+			while (
+				i < source.length &&
+				(source[i] === " " || source[i] === "\t")
+			) {
+				i++;
+				column++;
+			}
+
+			const startLine2 = line;
+			const startColumn2 = column;
+			const startPosition2 = i;
+
+			while (i < source.length &&
+				!isNewline(source[i])
+			) {
+				value += source[i];
+				i++;
+				column++;
+			}
+
+			tokens.push({
+				type: "IDENT",
+				value,
+				line: startLine2,
+				column: startColumn2,
+				position: startPosition2
+			})
+
 			continue;
 		}
 
@@ -114,6 +217,8 @@ function lex(source: string): Token[] {
 			const startColumn = column;
 			const startPosition = i;
 
+			terminated = false;
+
 			const quote = c;
 
 			i++;
@@ -142,6 +247,7 @@ function lex(source: string): Token[] {
 				}
 
 				if (current === quote) {
+					terminated = true;
 					i++;
 					column++;
 					break;
@@ -243,15 +349,57 @@ function lex(source: string): Token[] {
 					});
 					break;
 
-				case "strict":
+				case "class":
 					tokens.push({
-						type: "STRICT",
+						type: "CLASSDEF",
 						line: startLine,
 						column: startColumn,
 						position: startPosition
 					});
 					break;
 
+				// Modifiers
+				case "public":
+					tokens.push({
+						type: "MODIFIER",
+						value: "public",
+						line: startLine,
+						column: startColumn,
+						position: startPosition
+					});
+					break;
+
+				case "private":
+					tokens.push({
+						type: "MODIFIER",
+						value: "private",
+						line: startLine,
+						column: startColumn,
+						position: startPosition
+					});
+					break;
+
+				case "global":
+					tokens.push({
+						type: "MODIFIER",
+						value: "global",
+						line: startLine,
+						column: startColumn,
+						position: startPosition
+					});
+					break;
+
+				case "strict":
+					tokens.push({
+						type: "MODIFIER",
+						value: "strict",
+						line: startLine,
+						column: startColumn,
+						position: startPosition
+					});
+					break;
+
+				// Identifier
 				default:
 					tokens.push({
 						type: "IDENT",
@@ -301,6 +449,16 @@ function lex(source: string): Token[] {
 				tokens.push({
 					type: "RBRACE",
 					value: "}",
+					line,
+					column,
+					position: i
+				});
+				break;
+
+			case ":":
+				tokens.push({
+					type: "COLON",
+					value: ":",
 					line,
 					column,
 					position: i
@@ -387,6 +545,12 @@ function lex(source: string): Token[] {
 		column++;
 	}
 
+	if (!terminated) {
+		throw new Error(
+			`Unterminated string literal`
+		);
+	}
+
 	tokens.push({
 		type: "EOF",
 		line,
@@ -397,9 +561,66 @@ function lex(source: string): Token[] {
 	return tokens;
 }
 
+function parse(tokens: Token[]) {
+	function current(): Token {
+		return tokens[i];
+	}
+
+	function advance(): Token {
+		i++;
+		return tokens[i];
+	}
+
+	function expect(type: Token["type"]): Token {
+		const tok = current();
+
+		if (tok.type !== type) {
+			throw new Error(
+				`Expected ${type} at line ${tok.line}, column ${tok.column}`
+			);
+		}
+
+		advance();
+		return tok;
+	}
+
+	let i = 0;
+
+	let token: Token = tokens[i];
+	while (token.type !== "EOF") {
+
+		if (i == 0 || i == 2) {
+			advance();
+			if (token.type !== "OPTION") throw new Error("A PaintScript version and sprite name must be chosen in the header of the file!");
+		}
+
+		if (token.type === "MODIFIER") {
+			let mods = [];
+			mods.push(token.value);
+
+			while (token.type === "MODIFIER") {
+				mods.push(token.value);
+				expect()
+			}
+		}
+
+		if (token.type === "FUNCTION") {
+			advance();
+			expect("IDENT");
+		}
+
+		// Lastly
+		i++;
+		token = tokens[i];
+	}
+}
+
 const code = `
+#PaintScript 0.1
+#Sprite Sprite_1
+
 @Start {
-    say("Hello, World!");
+    say("Hello, World!"); // Same as this.say or Sprite_1.say
 	var hello = "Hello!";
 
 	say(hello);
@@ -410,7 +631,7 @@ const code = `
 	say(sum);
 }
 
-strict function add(num1, num2) {
+public strict function add(num1, num2) {
 	return num1 + num2;
 }
 `;
